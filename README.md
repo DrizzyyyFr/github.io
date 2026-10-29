@@ -1,70 +1,52 @@
-# Getting Started with Create React App
+# Andre Matthiessen — Technical Animation Portfolio
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React portfolio with three browser-native, interactive studies: two-bone inverse kinematics, a damped spring, and an in-place procedural gait. Built for GitHub Pages with no server or runtime API keys.
 
-## Available Scripts
+## Local development
 
-In the project directory, you can run:
+Use Node.js 22 and npm.
 
-### `npm start`
+The checked-in `.npmrc` keeps npm's peer-dependency resolution consistent with this Create React App lockfile. Unused ReactBits and Three.js starter dependencies have been removed; install compatible versions when adding a 3D study.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```sh
+npm ci
+npm start
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Open http://localhost:3000. Drag the target or focus the viewport and use arrow keys (Shift moves farther). Each study has adjustable parameters, pause/play, reset, and visual guides. Auto target drives the IK and spring studies. Reduced-motion visitors start with playback paused; off-screen and background simulations suspend their updates.
 
-### `npm test`
+```sh
+npm test -- --watchAll=false --runInBand
+npm run build
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## GitHub Pages
 
-### `npm run build`
+The repository is `DrizzyyyFr/github.io`, a **project site**. Its default Pages address is `https://drizzyyyfr.github.io/github.io/`, not the account root. To use `https://drizzyyyfr.github.io/`, the repository must instead be named `DrizzyyyFr.github.io` (or configure a custom domain).
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. In repository **Settings → Pages → Build and deployment**, choose **GitHub Actions** as Source.
+2. Merge the portfolio branch into `main` (or push to `main`).
+3. The **Build and deploy portfolio** workflow installs from the lockfile, tests, builds, and deploys. Its deployment job links to the published URL. Pull requests run tests/build only.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+`homepage: "."` keeps compiled asset URLs relative, so both a project subpath and an account-root site work. Navigation uses anchors; `?demo=ik`, `?demo=spring`, and `?demo=gait` open directly into a study without requiring server-side routing.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+See [GitHub's workflow guide](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) and [publishing source settings](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
-### `npm run eject`
+## Customize and add work
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- `src/App.js`: name, introduction, GitHub links, study metadata, project cards, and notes. Current studies are illustrative examples, not production credits. Replace the introduction with your own wording and add real project breakdowns as available.
+- `src/App.css`: colors, layout, responsive breakpoints, and interaction styling.
+- `src/motion.js`: pure solver and simulation functions; covered by `src/motion.test.js`.
+- `public/index.html`: title and search/social metadata.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+To add a study, add metadata to `studies`, a matching viewport/control branch in `MotionLab`, and a note describing the method and limits. Keep reusable math separate from React. Add larger demos as separate components loaded with `React.lazy` when needed. Put images, clips, or models in `public/assets/` and reference them through `process.env.PUBLIC_URL + '/assets/filename'` so project-site paths remain valid. Avoid committing oversized source assets.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+The current demos use SVG and React; WebGL / Three.js can also run entirely in the browser on GitHub Pages. Python, Maya, Unreal, or other desktop/server code must be ported to browser-compatible code, precomputed, or hosted separately. Never put secrets in frontend code.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Model boundaries
 
-## Learn More
+- IK clamps to the annulus between `abs(upper-lower)` and `upper+lower`, including a deterministic folded solution at zero distance.
+- Spring dynamics use a damped harmonic oscillator integrated in substeps no larger than 1/240 second; browser frame gaps are capped to avoid catch-up explosions.
+- Locomotion is a flat-ground, in-place gait study, not terrain adaptation or a complete character controller.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+No tracking, external fonts, or runtime network dependencies are used by the page.
