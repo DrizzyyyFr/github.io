@@ -1,143 +1,110 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import PortfolioBrowser from './PortfolioBrowser';
-import WheelPicker from './WheelPicker';
-import { navigation, resolvePage } from '../../config/navigation';
+import { navigation } from '../../config/navigation';
+
+const stacked = '(max-width: 850px) and (orientation: portrait)';
+const row = name => screen.getByRole('button', { name: new RegExp(name) });
 
 beforeEach(() => {
   window.matchMedia = () => ({ matches: false });
   window.history.replaceState(null, '', '/');
-  jest.useFakeTimers();
 });
-afterEach(() => { jest.useRealTimers(); });
 
-test('navigation starts with categories and progressively reveals clicked branches', () => {
+test('the two categories are tabs and every project of the selected one is listed with its path', () => {
   const view = render(<PortfolioBrowser />);
-  expect(screen.getAllByRole('listbox')).toHaveLength(1);
-  expect(within(screen.getByRole('listbox', { name: 'Category' })).getAllByRole('option')).toHaveLength(2);
-  expect(screen.queryByRole('option', { name: /about/i })).not.toBeInTheDocument();
+  const tabs = within(screen.getByRole('tablist', { name: 'Work categories' })).getAllByRole('tab');
+  expect(tabs.map(tab => tab.textContent)).toEqual(['Animation', 'Technical Animation']);
+  expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+  expect(screen.queryByRole('tab', { name: /all work/i })).not.toBeInTheDocument();
   expect(navigation.some(item => /about/i.test(item.label))).toBe(false);
-  fireEvent.click(screen.getByRole('option', { name: 'Animation', exact: true }));
-  expect(window.location.hash).toBe('#/animation');
-  view.rerender(<PortfolioBrowser categoryId="animation" />);
-  act(() => jest.advanceTimersByTime(180));
-  expect(screen.getAllByRole('listbox')).toHaveLength(2);
-  fireEvent.click(screen.getByRole('option', { name: 'Interactions' }));
-  expect(window.location.hash).toBe('#/animation/interactions');
-  view.rerender(<PortfolioBrowser categoryId="animation" subcategoryId="interactions" />);
-  act(() => jest.advanceTimersByTime(180));
-  expect(screen.getAllByRole('listbox')).toHaveLength(3);
-  expect(screen.queryByText('Explore entry')).not.toBeInTheDocument();
-});
-
-test('changing category fades out the old family before replacing subcategories and entries', () => {
-  const view = render(<PortfolioBrowser categoryId="animation" subcategoryId="interactions" />);
+  expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(2);
+  expect(row('8 Directional Chair State Animations\\s*Animation / Interactions')).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(tabs[1]);
+  expect(window.location.hash).toBe('#/technical-animation');
   view.rerender(<PortfolioBrowser categoryId="technical-animation" />);
-  expect(document.querySelectorAll('.is-leaving')).toHaveLength(2);
-  expect(screen.getByRole('option', { name: 'Interactions' })).toBeInTheDocument();
-  act(() => jest.advanceTimersByTime(180));
-  expect(within(screen.getByRole('listbox', { name: 'Subcategory' })).getByRole('option', { name: 'Animation Systems' })).toBeInTheDocument();
-  expect(screen.queryByRole('option', { name: /8 Directional Chair/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole('listbox', { name: 'Entry' })).not.toBeInTheDocument();
+  expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(9);
+  expect(row('Getting Started\\s*Technical Animation / Procedural Systems')).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Technical Animation' })).toHaveAttribute('aria-selected', 'true');
 });
 
-test('rapid category reversal cancels the stale family replacement', () => {
-  const view = render(<PortfolioBrowser categoryId="animation" subcategoryId="interactions" />);
-  view.rerender(<PortfolioBrowser categoryId="technical-animation" />);
-  act(() => jest.advanceTimersByTime(80));
-  view.rerender(<PortfolioBrowser categoryId="animation" subcategoryId="interactions" />);
-  act(() => jest.advanceTimersByTime(900));
-  expect(screen.getByRole('option', { name: /8 Directional Chair/ })).toBeInTheDocument();
-  expect(document.querySelector('.is-leaving')).not.toBeInTheDocument();
-});
-
-test('clicking the final shard opens its exact entry from that element', () => {
+test('clicking a row previews it in place, and View project opens that exact entry from the card', () => {
   const open = jest.fn();
-  const view = render(<PortfolioBrowser categoryId="animation" subcategoryId="interactions" onOpen={open} />);
-  const shard = screen.getByRole('option', { name: 'Vehicular Interaction Animations' });
-  fireEvent.click(shard);
-  expect(open).toHaveBeenCalledWith(shard);
+  render(<PortfolioBrowser categoryId="animation" onOpen={open} />);
+  fireEvent.click(row('Vehicular Interaction Animations'));
+  expect(window.location.hash).toBe('');
+  expect(row('Vehicular Interaction Animations')).toHaveAttribute('aria-pressed', 'true');
+  expect(row('8 Directional Chair State Animations')).toHaveAttribute('aria-pressed', 'false');
+  const card = screen.getByRole('region', { name: 'Vehicular Interaction Animations preview' });
+  expect(card).toHaveAttribute('data-entry-id', 'interactions-vehicular-interaction-animations');
+  expect(screen.queryByText(/preview(ing)?$/i)).not.toBeInTheDocument();
+  fireEvent.click(within(card).getByRole('button', { name: /View project/ }));
+  expect(open).toHaveBeenCalledWith(card);
   expect(window.location.hash).toBe('#/animation/interactions/interactions-vehicular-interaction-animations');
+});
+
+test('the preview loops a muted video, shows an image, or shows no media and no text', () => {
+  const view = render(<PortfolioBrowser categoryId="animation" />);
+  const video = document.querySelector('.work-preview video');
+  expect(video.getAttribute('src')).toContain('chair-inengine');
+  expect(video.muted).toBe(true);
+  expect(video).toHaveAttribute('loop');
+  expect(video).toHaveAttribute('autoplay');
+  view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="optimization-and-profiling-profiling-anim-graphs" />);
+  expect(document.querySelector('.work-preview video').getAttribute('src')).toContain('2026-03-01-18-18-26');
+  view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="procedural-systems-lookat-documentation-simple-state-machine" />);
+  expect(within(screen.getByRole('region', { name: /preview/ })).getByRole('img', { name: 'Pasted image 20260301171057' })).toBeInTheDocument();
+  view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="download" />);
+  const card = screen.getByRole('region', { name: 'Download preview' });
+  expect(card.querySelector('.work-preview-media')).toBeNull();
+  expect(card).not.toHaveTextContent('Procedural Animation Toolkit');
+  expect(within(card).getByRole('button', { name: /View project/ })).toBeInTheDocument();
+});
+
+test('reduced motion keeps the preview video still', () => {
+  window.matchMedia = query => ({ matches: query === '(prefers-reduced-motion: reduce)' });
+  render(<PortfolioBrowser categoryId="animation" />);
+  const video = document.querySelector('.work-preview video');
+  expect(video).not.toHaveAttribute('autoplay');
+  expect(video).toHaveAttribute('preload', 'metadata');
+});
+
+test('a routed entry is previewed, kept after the route returns to its topic, and remembered per category', () => {
+  const view = render(<PortfolioBrowser categoryId="technical-animation" subcategoryId="procedural-systems" entryId="procedural-systems-lookat-l-a-slides" />);
+  expect(row('L-A Slides')).toHaveAttribute('aria-pressed', 'true');
   view.rerender(<PortfolioBrowser categoryId="technical-animation" subcategoryId="procedural-systems" />);
-  act(() => jest.advanceTimersByTime(180));
-  expect(within(screen.getByRole('listbox', { name: 'Entry' })).getAllByRole('option')).toHaveLength(4);
-  view.rerender(<PortfolioBrowser categoryId="technical-animation" subcategoryId="downloads" />);
-  act(() => jest.advanceTimersByTime(180));
-  expect(within(screen.getByRole('listbox', { name: 'Entry' })).getAllByRole('option')).toHaveLength(1);
-  expect(screen.getByRole('option', { name: 'Download' })).toBeInTheDocument();
-});
-
-test('mobile stages slide forward on activation and the trail returns to a parent', () => {
-  window.matchMedia = query => ({ matches: query === '(max-width: 850px)' });
-  const view = render(<PortfolioBrowser />);
-  fireEvent.click(screen.getByRole('option', { name: 'Animation', exact: true }));
+  expect(row('L-A Slides')).toHaveAttribute('aria-pressed', 'true');
   view.rerender(<PortfolioBrowser categoryId="animation" />);
-  act(() => jest.advanceTimersByTime(180));
-  act(() => jest.advanceTimersByTime(650));
-  expect(document.querySelector('.browser-columns').style.getPropertyValue('--mobile-step')).toBe('1');
-  expect(screen.getByRole('listbox', { name: 'Subcategory' })).toHaveFocus();
-  expect(document.querySelector('.browser-column')).toHaveAttribute('inert');
-  fireEvent.click(screen.getByRole('button', { name: '01 Animation' }));
-  act(() => jest.advanceTimersByTime(800));
-  expect(document.querySelector('.browser-columns').style.getPropertyValue('--mobile-step')).toBe('0');
-  expect(screen.getByRole('listbox', { name: 'Category' })).toHaveFocus();
+  expect(row('8 Directional Chair State Animations')).toHaveAttribute('aria-pressed', 'true');
+  view.rerender(<PortfolioBrowser categoryId="technical-animation" />);
+  expect(row('L-A Slides')).toHaveAttribute('aria-pressed', 'true');
+  view.unmount();
+  render(<PortfolioBrowser categoryId="technical-animation" subcategoryId="automation" />);
+  expect(row('1 foot, 2 foot')).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('Enter activates the selected entry directly', () => {
-  const open = jest.fn();
-  render(<WheelPicker label="Entry" variant="entry" items={[{id: 'entry', title: 'My entry'}]} onChange={() => {}} onActivate={open} />);
-  fireEvent.keyDown(screen.getByRole('listbox'), { key: 'Enter' });
-  expect(open).toHaveBeenCalledWith(0, screen.getByRole('option', { name: 'My entry' }));
+test('arrow keys move through the rows and across the category tabs', () => {
+  render(<PortfolioBrowser categoryId="animation" />);
+  row('8 Directional Chair State Animations').focus();
+  fireEvent.keyDown(row('8 Directional Chair State Animations'), { key: 'ArrowDown' });
+  expect(row('Vehicular Interaction Animations')).toHaveFocus();
+  expect(row('Vehicular Interaction Animations')).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.keyDown(row('Vehicular Interaction Animations'), { key: 'ArrowDown' });
+  expect(row('Vehicular Interaction Animations')).toHaveFocus();
+  const tab = screen.getByRole('tab', { name: 'Animation' });
+  tab.focus();
+  fireEvent.keyDown(tab, { key: 'ArrowRight' });
+  expect(window.location.hash).toBe('#/technical-animation');
+  expect(screen.getByRole('tab', { name: 'Technical Animation' })).toHaveFocus();
 });
 
-const items = [{ id: 'a', label: 'First' }, { id: 'b', label: 'Second' }, { id: 'c', label: 'Third' }];
-test('depth motion retains item nodes and glides through intermediate positions', () => {
-  const change = jest.fn();
-  const view = render(<WheelPicker label="Category" items={items} selectedIndex={0} onChange={change} />);
-  const first = screen.getByRole('option', { name: 'First' });
-  const initial = first.style.transform;
-  view.rerender(<WheelPicker label="Category" items={items} selectedIndex={1} onChange={change} />);
-  expect(screen.getByRole('option', { name: 'First' })).toBe(first);
-  expect(first.style.transform).toBe(initial);
-  act(() => jest.advanceTimersByTime(120));
-  const intermediate = first.style.transform;
-  expect(intermediate).not.toBe(initial);
-  view.rerender(<WheelPicker label="Category" items={items} selectedIndex={0} onChange={change} />);
-  expect(first.style.transform).toBe(intermediate);
-  act(() => jest.advanceTimersByTime(1600));
-  expect(first.style.transform).toBe(initial);
-});
-
-test('wheel input throttles inertia, preserves zoom, and releases page scroll at boundaries', () => {
-  const change = jest.fn();
-  render(<WheelPicker label="Category" items={items} selectedIndex={0} onChange={change} />);
-  const list = screen.getByRole('listbox', { name: 'Category' });
-  const boundary = new WheelEvent('wheel', { deltaY: -120, cancelable: true });
-  fireEvent(list, boundary);
-  expect(boundary.defaultPrevented).toBe(false);
-  const event = new WheelEvent('wheel', { deltaY: 120, cancelable: true });
-  fireEvent(list, event);
-  expect(event.defaultPrevented).toBe(true);
-  expect(change).toHaveBeenCalledWith(1);
-  fireEvent.wheel(list, { deltaY: 120 });
-  expect(change).toHaveBeenCalledTimes(1);
-  const zoom = new WheelEvent('wheel', { deltaY: 120, ctrlKey: true, cancelable: true });
-  fireEvent(list, zoom);
-  expect(zoom.defaultPrevented).toBe(false);
-  fireEvent.keyDown(list, { key: 'End' });
-  expect(change).toHaveBeenLastCalledWith(2);
-  fireEvent.keyDown(list, { key: 'ArrowUp' });
-  expect(change).toHaveBeenLastCalledWith(0);
-});
-
-test('reduced motion jumps directly to the final depth position', () => {
-  window.matchMedia = () => ({ matches: true });
-  const view = render(<WheelPicker label="Category" items={items} selectedIndex={0} onChange={() => {}} />);
-  view.rerender(<WheelPicker label="Category" items={items} selectedIndex={1} onChange={() => {}} />);
-  expect(screen.getByRole('option', { name: 'Second' }).style.transform).toContain('translateZ(24px)');
-});
-
-test('entry URLs resolve the original content and invalid paths fall back safely', () => {
-  const route = resolvePage('#/animation/interactions/interactions-8-directional-chair-state-animations');
-  expect(route.entry.body).toContain('Chair_InEngine.mp4');
-  expect(resolvePage('#/missing/topic').entry).toBeUndefined();
+test('portrait phones open the selected row in place with its preview', () => {
+  window.matchMedia = query => ({ matches: query === stacked });
+  render(<PortfolioBrowser categoryId="animation" />);
+  const first = row('8 Directional Chair State Animations').closest('li');
+  expect(within(first).getByRole('region', { name: '8 Directional Chair State Animations preview' })).toBeInTheDocument();
+  fireEvent.click(row('Vehicular Interaction Animations'));
+  const second = row('Vehicular Interaction Animations').closest('li');
+  expect(within(second).getByRole('region', { name: 'Vehicular Interaction Animations preview' })).toBeInTheDocument();
+  expect(screen.getAllByRole('region')).toHaveLength(1);
+  expect(document.querySelector('.portfolio-browser')).toHaveClass('is-stacked');
 });

@@ -1,7 +1,7 @@
 import portfolio from '../../content/portfolio.json';
 import './NoteContent.css';
 
-const assetUrl = name => portfolio.media[name] ? `${process.env.PUBLIC_URL}${portfolio.media[name]}` : null;
+export const assetUrl = name => portfolio.media[name] ? `${process.env.PUBLIC_URL}${portfolio.media[name]}` : null;
 const safeLink = url => /^(https?:\/\/|#\/)/i.test(url) ? url : null;
 const findNote = name => {
   const key = name.toLowerCase().replace(/\.md$/, '');

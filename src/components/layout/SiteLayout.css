@@ -90,6 +90,7 @@
   color: var(--color-muted);
   font-size: var(--text-caption);
   pointer-events: none;
+  opacity: calc(1 - var(--entry-retreat, 0));
 }
 
 .footer-role { font-family: var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
@@ -101,6 +102,12 @@
   .site-navigation .external-link { display: none; }
   .site-footer { min-height: 65px; font-size: 10px; gap: var(--space-3); }
   .footer-role { letter-spacing: 0; }
+}
+
+/* Landscape phones: a slimmer header, and no fixed footer line, which could only sit on content. */
+@media (max-height: 500px) {
+  .site-header { min-height: 64px; padding-top: 14px; }
+  .site-footer { display: none; }
 }
 
 @media (max-width: 1000px) and (min-width: 601px) {

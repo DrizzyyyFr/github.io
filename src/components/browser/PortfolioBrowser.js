@@ -1,86 +1,141 @@
 import { useEffect, useRef, useState } from 'react';
 import portfolio from '../../content/portfolio.json';
-import WheelPicker from './WheelPicker';
+import { projectPreview } from './projectPreview';
 import useMediaQuery from './useMediaQuery';
 import './PortfolioBrowser.css';
 
-function Branch({ branchKey, children }) {
-  const [visible, setVisible] = useState(branchKey);
-  const retained = useRef(children);
-  const changing = visible !== branchKey;
-  if (!changing) retained.current = children;
+// Every entry of a category in one list; its topic becomes the row's path.
+const projectsOf = category => category.subcategories.flatMap(subcategory => subcategory.entries.map(entry => ({
+  category, subcategory, entry, path: `${category.label} / ${subcategory.label}`,
+})));
+const navigate = hash => { if (window.location.hash !== hash) window.location.hash = hash; };
+
+function PreviewMedia({ media }) {
+  const still = useMediaQuery('(prefers-reduced-motion: reduce)');
+  if (media.kind === 'video') return <video className="work-preview-video" src={media.src} muted loop playsInline autoPlay={!still}
+    preload={still ? 'metadata' : 'auto'} aria-hidden="true" tabIndex={-1} />;
+  return <img className="work-preview-image" src={media.src} alt={media.alt} />;
+}
+
+function ProjectPreview({ project, onOpen }) {
+  const card = useRef(null);
+  const { category, subcategory, entry, path } = project;
+  const media = projectPreview(entry);
+  const open = () => {
+    onOpen?.(card.current);
+    navigate(`#/${category.id}/${subcategory.id}/${entry.id}`);
+  };
+  return <section ref={card} className="work-preview" data-entry-id={entry.id} aria-label={`${entry.title} preview`}>
+    <span className="work-preview-surface" aria-hidden="true" />
+    {media && <div className="work-preview-media" key={entry.id}><PreviewMedia media={media} /></div>}
+    <div className="work-preview-meta">
+      <div className="work-preview-heading">
+        <h3 className="work-preview-title" data-morph-title>{entry.title}</h3>
+        <p className="work-preview-path">{path}</p>
+      </div>
+      <button type="button" className="work-open" onClick={open}>View project <span aria-hidden="true">&rarr;</span></button>
+    </div>
+  </section>;
+}
+
+// Flags the list while rows remain below its fold, so the edge fades only when there is more to scroll.
+function useMoreBelow(list, key) {
   useEffect(() => {
-    if (!changing) return;
-    const timer = setTimeout(() => setVisible(branchKey), window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 160);
-    return () => clearTimeout(timer);
-  }, [branchKey, changing]);
-  return <div className={`browser-branch${changing ? ' is-leaving' : ''}`} inert={changing || !branchKey ? true : undefined}>
-    <div key={visible} className="branch-arrival">{changing ? retained.current : children}</div>
-  </div>;
+    const element = list.current;
+    if (!element) return undefined;
+    const update = () => element.toggleAttribute('data-more', element.scrollTop + element.clientHeight < element.scrollHeight - 2);
+    update();
+    element.addEventListener('scroll', update, { passive: true });
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(element);
+    return () => { element.removeEventListener('scroll', update); observer?.disconnect(); };
+  }, [list, key]);
 }
 
 export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, onOpen }) {
-  const root = useRef(null);
-  const mobile = useMediaQuery('(max-width: 850px)');
+  const list = useRef(null);
+  const stacked = useMediaQuery('(max-width: 850px) and (orientation: portrait)');
   const categories = portfolio.categories;
-  const categoryIndex = Math.max(0, categories.findIndex(item => item.id === categoryId));
-  const category = categories[categoryIndex];
-  const subcategoryIndex = Math.max(0, category.subcategories.findIndex(item => item.id === subcategoryId));
-  const subcategory = category.subcategories[subcategoryIndex];
-  const [entrySelections, setEntrySelections] = useState({});
-  const [mobileStep, setMobileStep] = useState(subcategoryId ? 2 : categoryId ? 1 : 0);
-  const familyKey = `${category.id}/${subcategory.id}`;
+  const category = categories.find(item => item.id === categoryId) || categories[0];
+  const projects = projectsOf(category);
+  const [previewed, setPreviewed] = useState({});
+  const routed = projects.find(project => project.entry.id === entryId);
+  const routedId = routed?.entry.id;
   useEffect(() => {
-    if (!entryId) return;
-    const index = subcategory.entries.findIndex(entry => entry.id === entryId);
-    if (index >= 0) setEntrySelections(previous => previous[familyKey] === index ? previous : { ...previous, [familyKey]: index });
-  }, [entryId, familyKey, subcategory.entries]);
-  const entryIndex = Math.min(entrySelections[familyKey] || 0, subcategory.entries.length - 1);
-  const hasCategory = Boolean(categoryId);
-  const hasTopic = hasCategory && Boolean(subcategoryId);
-  const stage = Math.min(mobileStep, hasTopic ? 2 : hasCategory ? 1 : 0);
+    if (routedId) setPreviewed(previous => previous[category.id] === routedId ? previous : { ...previous, [category.id]: routedId });
+  }, [routedId, category.id]);
+  const selected = routed
+    || projects.find(project => project.entry.id === previewed[category.id])
+    || projects.find(project => project.subcategory.id === subcategoryId)
+    || projects[0];
+  useMoreBelow(list, `${category.id}/${stacked}/${selected.entry.id}`);
+
+  // A stacked row opens downwards, so bring all of it into the list's view. Only the list
+  // scrolls: moving the page would move the ocean scene.
+  const chosen = useRef(false);
   useEffect(() => {
-    if (!mobile) return;
-    const timer = setTimeout(() => root.current?.querySelectorAll('.browser-column')[stage]?.querySelector('[role="listbox"]')?.focus({ preventScroll: true }), 750);
-    return () => clearTimeout(timer);
-  }, [mobile, stage]);
-  const navigate = hash => { if (window.location.hash !== hash) window.location.hash = hash; };
-  const selectCategory = index => {
-    if (categories[index].id !== categoryId) navigate(`#/${categories[index].id}`);
+    if (!stacked || !chosen.current) return;
+    chosen.current = false;
+    const box = list.current;
+    const item = box?.querySelector('.work-project.is-selected');
+    if (!item) return;
+    const view = box.getBoundingClientRect();
+    const rect = item.getBoundingClientRect();
+    const offset = rect.top < view.top ? rect.top - view.top - 8 : rect.bottom > view.bottom ? Math.min(rect.bottom - view.bottom + 12, rect.top - view.top - 8) : 0;
+    if (offset) box.scrollBy?.({ top: offset, behavior: 'smooth' });
+  }, [stacked, selected.entry.id]);
+
+  const preview = project => {
+    chosen.current = true;
+    setPreviewed(previous => ({ ...previous, [category.id]: project.entry.id }));
   };
-  const selectSubcategory = index => navigate(`#/${category.id}/${category.subcategories[index].id}`);
-  const openEntry = (index, element) => {
-    onOpen?.(element);
-    navigate(`#/${category.id}/${subcategory.id}/${subcategory.entries[index].id}`);
+  const chooseCategory = index => navigate(`#/${categories[index].id}`);
+  const tabKeys = event => {
+    const index = categories.indexOf(category);
+    const next = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: categories.length - 1 }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    const wrapped = (next + categories.length) % categories.length;
+    chooseCategory(wrapped);
+    event.currentTarget.querySelectorAll('[role="tab"]')[wrapped]?.focus();
+  };
+  const rowKeys = event => {
+    const rows = [...list.current.querySelectorAll('.work-row')];
+    const index = rows.indexOf(document.activeElement);
+    const next = { ArrowDown: index + 1, ArrowUp: index - 1, Home: 0, End: rows.length - 1 }[event.key];
+    if (index < 0 || next === undefined) return;
+    event.preventDefault();
+    const target = Math.max(0, Math.min(rows.length - 1, next));
+    preview(projects[target]);
+    rows[target].focus();
   };
 
-  return <div ref={root} className={`portfolio-browser${hasCategory ? ' has-category' : ''}${hasTopic ? ' has-topic' : ''}`}>
-    <nav className="browser-trail" aria-label="Browse levels">
-      <button onClick={() => setMobileStep(0)} aria-current={stage === 0 ? 'step' : undefined}>01 <span>{hasCategory ? category.label : 'Category'}</span></button>
-      <span aria-hidden="true">&rarr;</span>
-      <button onClick={() => setMobileStep(1)} disabled={!hasCategory} aria-current={stage === 1 ? 'step' : undefined}>02 <span>{hasTopic ? subcategory.label : 'Topic'}</span></button>
-      <span aria-hidden="true">&rarr;</span>
-      <button onClick={() => setMobileStep(2)} disabled={!hasTopic} aria-current={stage === 2 ? 'step' : undefined}>03 <span>Entry</span></button>
-    </nav>
-    <div className="browser-window">
-      <div className="browser-columns" style={{ '--mobile-step': stage }}>
-        <div className="browser-column" inert={mobile && stage !== 0 ? true : undefined}>
-          <WheelPicker label="Category" items={categories} selectedIndex={categoryIndex} onChange={selectCategory} onActivate={() => setMobileStep(1)} />
-        </div>
-        <div className="browser-column branch-column" inert={mobile && stage !== 1 ? true : undefined}>
-          <span className={`branch-connection${hasCategory ? ' is-connected' : ''}`} aria-hidden="true" />
-          <Branch branchKey={categoryId || ''}>
-            {hasCategory && <WheelPicker label="Subcategory" variant="subcategory" items={category.subcategories} selectedIndex={subcategoryIndex} onChange={selectSubcategory} onActivate={() => setMobileStep(2)} />}
-          </Branch>
-        </div>
-        <div className="browser-column branch-column" inert={mobile && stage !== 2 ? true : undefined}>
-          <span className={`branch-connection${hasTopic ? ' is-connected' : ''}`} aria-hidden="true" />
-          <Branch branchKey={hasTopic ? familyKey : ''}>
-            {hasTopic && <WheelPicker label="Entry" variant="entry" items={subcategory.entries} selectedIndex={entryIndex}
-              onChange={index => setEntrySelections(previous => ({ ...previous, [familyKey]: index }))} onActivate={openEntry} />}
-          </Branch>
-        </div>
+  return <div className={`portfolio-browser${stacked ? ' is-stacked' : ''}`}>
+    <div className="work-index">
+      <div className="work-tabs" role="tablist" aria-label="Work categories" onKeyDown={tabKeys}>
+        {categories.map((item, index) => <button key={item.id} type="button" role="tab" id={`work-tab-${item.id}`} className="work-tab"
+          aria-selected={item === category} aria-controls="work-projects" tabIndex={item === category ? 0 : -1}
+          onClick={() => chooseCategory(index)}>{item.label}</button>)}
+      </div>
+      <div ref={list} id="work-projects" className="work-projects" role="tabpanel" aria-labelledby={`work-tab-${category.id}`}>
+        <ul key={category.id} className="work-project-list" onKeyDown={rowKeys}>
+          {projects.map((project, index) => {
+            const current = project === selected;
+            return <li key={project.entry.id} className={`work-project${current ? ' is-selected' : ''}`}>
+              <button type="button" className="work-row" aria-pressed={current} onClick={() => preview(project)}>
+                <span className="work-row-surface" aria-hidden="true" />
+                <span className="work-row-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                <span className="work-row-text">
+                  <span className="work-row-title">{project.entry.title}</span>
+                  <span className="work-row-path">{project.path}</span>
+                </span>
+              </button>
+              {stacked && current && <ProjectPreview project={project} onOpen={onOpen} />}
+            </li>;
+          })}
+        </ul>
       </div>
     </div>
+    {!stacked && <ProjectPreview key={selected.entry.id} project={selected} onOpen={onOpen} />}
   </div>;
 }

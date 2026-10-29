@@ -12,18 +12,19 @@ Render the environment in one WebGL canvas. The page remains 2D with a 3D appear
 
 The water, lighting, and caustics are animated procedurally; do not use static background textures, SVG scenery, grain, floating decorative shards, or a bounded header background. The header stays transparent and borderless across screen widths. Cap rendering resolution and stop idle animation when hidden or offscreen. Shade only the visible side of the crossing, use a lightweight material for the waterline edge, and skip caustics after their detail fades out. Compute the two surface noise gradients analytically and reuse the shared illumination footprint across the water volume and floor. Keep the existing rendering budgets and adaptive resolution behavior: recover gradually after sustained stable frames, and preserve animation time across context loss and visibility changes. Reduced motion freezes decorative water movement and updates scroll state directly.
 
-Keep navigation free of instructional captions and decorative slogans. Category/topic names, the mobile back trail, arrow controls, and the personal introduction provide the interface.
+Keep navigation free of instructional captions, status badges, and decorative slogans. The category tabs, numbered project rows with their topic path, the preview card, and the personal introduction provide the interface; the highlighted row alone marks the previewed project.
 
 Keep the existing personal introduction. The only main categories are Animation and Technical Animation. Use real notes from the selected source; do not invent projects or biography.
 
 ## Interaction
 
-1. Initially show the main categories. Clicking a category unfolds its topics on the right.
-2. Clicking a topic unfolds its entries on the right. Changing a parent clears the deeper branch.
-3. Clicking an entry expands that exact pane into a reading surface with the original content inside. There is no separate Explore entry button or destination row.
-4. Back to shards, Escape, and browser back return to navigation. The browser remains mounted, preserving selection and scroll position.
+1. The Work panel opens on the Animation tab; there is no All work tab. The two tabs switch category and route to `#/category`.
+2. A category lists every one of its entries as a numbered row with its `Category / Topic` path. The routed entry, the category's remembered row, or the routed topic's first entry is previewed, in that order, else the first row.
+3. Clicking a row previews it without changing the route.
+4. View project expands the preview card into the reading surface with the original content inside, routing to `#/category/topic/entry`.
+5. Back, Escape, and browser back return to the panel. The browser remains mounted, preserving the previewed row and list scroll.
 
-Mouse wheel and arrow keys browse each column. Enter or Space activates the selected pane. Mouse notches and direction changes respond immediately; reject declining trackpad inertia without locking input throughout an animation. Page scrolling resumes at list boundaries. Horizontal touch swipes browse; vertical gestures scroll the page.
+The preview shows an entry's first video as a muted loop, otherwise its first image, otherwise no media at all; it never shows note text. Left and right arrows move between tabs; up and down arrows move between rows, which are toggle buttons whose pressed state marks the preview. The list scrolls inside its column, fades its lower edge only while rows remain below, and hands scrolling back to the page at its end.
 
 ## Material and palette
 
@@ -41,33 +42,32 @@ Edit shared interface values in `src/styles/tokens.css` and environmental lighti
 | `--glass-edge` | Fine cyan/warm edge highlights |
 | `--shard-outline` | Shared six-point cut-glass silhouette |
 
-The geometry takes its cue from the fractured-glass UI Lab reference, adapted to clear text and direct interaction. Selected panes come forward; neighbors recede through perspective, translation, tilt, scale, and opacity. Subcategory panes are narrower and 82px high versus 128px for main categories.
+The geometry takes its cue from the fractured-glass UI Lab reference, adapted to clear text and direct interaction. Project rows are glass with a pointed right edge; the previewed row brightens and gains a cyan edge bar. The preview card uses the expanded pane's glass and outline, so opening it reads as one surface growing. Every painted glass layer carries its own clip-path: a layer that relies on its parent's clip can render as its full rectangle.
 
 ## Motion
 
 - Native scroll progress drives the shared scene timeline with a brief smoothing response. The name enters and exits to the left; the introduction remains readable during the high-sun hold. Reveal navigation only after the descent begins. Do not trap the page in timed slides or intercept page wheel gestures.
-- A critically damped shared position drives each picker. Preserve velocity during reversals and stable item identity during navigation.
-- Branches leave over 160ms and unfold from the left over 720ms. Cancel stale replacements on rapid changes.
-- Follow `G:\GanglifeBevy\game\src\ui_lab\shards\transition.rs`: one reversible 720ms timeline. Between progress .12 and .84, interpolate the selected pane's actual bounds and six-point outline toward the expanded frame. Reposition its title independently; never scale a whole prelaid-out page.
-- Other panes retreat left and shrink with staggered smoothstep timing. The selected pane keeps its material and its original is hidden until return. Reveal the content by clipping its height only during progress .77 to 1. Show the return control near the end; Escape remains available throughout. Closing reverses the same timeline, including mid-transition interruptions.
+- Switching category unfolds the new list from the left over 560ms; a new preview fades its media in over 420ms. Row highlights transition registered custom properties rather than filter.
+- Follow `G:\GanglifeBevy\game\src\ui_lab\shards\transition.rs`: one reversible 720ms timeline. Between progress .12 and .84, interpolate the preview card's actual bounds and six-point outline toward the expanded frame. Reposition its title independently; never scale a whole prelaid-out page.
+- Over progress 0 to .3 the card fades out while the pane's glass fades in over it. Project rows retreat left and shrink with staggered smoothstep timing; the tabs, heading, header, and footer fade. The card's title stays hidden until return. Reveal the content by clipping its height only during progress .77 to 1. Show the return control near the end; Escape remains available throughout. Closing reverses the same timeline, including mid-transition interruptions.
 - Reduced-motion preferences disable the animated morph, decorative movement, and transitions. Keep all navigation and content usable.
 
 ## Responsive layout and accessibility
 
-Desktop columns use the available width up to 2200px. On screens at or below 850px, use a horizontal stage for Category, Topic, and Entry. Clicking advances the stage; the trail returns to parents. Inactive mobile stages are inert, and focus moves to the revealed selector after the transition. Do not squeeze three columns onto a phone.
+Wide and landscape screens place the tabs and project list beside the preview card, using the available width up to 2200px. Portrait screens at or below 850px wide use one column: the selected row opens in place to show its preview and View project, and the list scrolls that row fully into view without moving the page. Every layout keeps bottom clearance for the fixed music player.
 
-Compact-height screens keep the four-stage sticky scene, use smaller navigation spacing, and allow the revealed work area to scroll internally when needed. Size the two name lines against both viewport width and height. The expanded pane fits within the dynamic viewport, with its own content scroll area. Larger screens receive a broader reading surface.
+Compact-height screens keep the four-stage sticky scene, use smaller navigation spacing, and let the work area scroll rather than shrink the panel below 300px (220px at 500px tall or less). At 500px tall or less the header slims and the fixed footer line is hidden, since it could only sit on content. Size the two name lines against both viewport width and height. The expanded pane fits within the dynamic viewport, with its own content scroll area. Larger screens receive a broader reading surface.
 
 Hide native page and entry-content scrollbar chrome without reserving a gutter or disabling scrolling. Mouse wheel, touch, keyboard navigation, and visible focus still work.
 
-Use a native modal dialog for expanded content: trap focus, label it with the entry title, support Escape, restore focus, and lock background scrolling while open. Keep visible focus outlines and semantic listboxes with selected options. Videos have controls and preload none; images load lazily.
+Use a native modal dialog for expanded content: trap focus, label it with the entry title, support Escape, restore focus, and lock background scrolling while open. Keep visible focus outlines; the categories are a tab list and the project list is its tab panel. Note videos have controls and preload none; images load lazily. The preview video is muted and decorative, and stays still under reduced motion.
 
 ## Source and folders
 
 | Location | Responsibility |
 | --- | --- |
 | `src/pages/home/` | Shared scene and scroll progress |
-| `src/components/browser/` | Stable 3D pickers, branch reveals, mobile stages |
+| `src/components/browser/` | Category tabs, project list, preview card and its media choice |
 | `src/pages/work/EntryOverlay.js` | Entry expansion, dialog lifecycle, reading content |
 | `src/components/content/` | Limited Markdown and media rendering |
 | `src/components/layout/` | Shared header and footer |

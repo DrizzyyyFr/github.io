@@ -32,7 +32,8 @@
 .explore-cue[aria-hidden='true'] { pointer-events: none; }
 .explore-cue-arrow { width: 44px; height: 44px; border: 1px solid #d7eff633; border-radius: 50%; display: grid; place-items: center; color: #e2f3f8; }
 .navigation-depth { position: absolute; inset: 0; clip-path: inset(max(0%, var(--waterline)) 0 0); pointer-events: none; }
-.work-section { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; width: calc(100% - var(--page-gutter) * 2); max-width: 2200px; margin: auto; padding: 100px 0 40px; opacity: var(--nav-opacity); transform: translate3d(0, calc((1 - var(--work-progress)) * 90px), 0) scale(calc(.94 + var(--work-progress) * .06)); }
+/* The bottom padding keeps the panel clear of the fixed music player in the lower-left corner. */
+.work-section { --player-clearance: calc(124px + env(safe-area-inset-bottom, 0px)); position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; width: calc(100% - var(--page-gutter) * 2); max-width: 2200px; margin: auto; padding: 100px 0 var(--player-clearance); opacity: var(--nav-opacity); transform: translate3d(0, calc((1 - var(--work-progress)) * 90px), 0) scale(calc(.94 + var(--work-progress) * .06)); }
 .work-section:not([inert]) { pointer-events: auto; }
 .work-heading { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: clamp(18px, 3vh, 40px); gap: 20px; opacity: calc(1 - var(--entry-retreat)); translate: calc(var(--entry-retreat) * -75vw) 0; }
 .work-heading h2 { margin: 0; font-size: clamp(28px, 3vw, 60px); letter-spacing: -.045em; line-height: 1.1; font-weight: 450; }
@@ -45,27 +46,28 @@
   .intro-biography { top: calc(50% + var(--name-size) + var(--name-gap) + 26px); }
   .intro-summary { max-width: 310px; margin-inline: auto; }
   .desktop-break { display: none; }
-  .work-section { padding-top: 90px; padding-bottom: 35px; }
+  .work-section { padding-top: 90px; }
   .work-heading { margin-bottom: 18px; }
   .scene-progress { bottom: 15px; }
 }
 @media (max-height: 650px) {
-  .work-section { justify-content: flex-start; padding-top: 85px; padding-bottom: 30px; overflow-y: auto; scrollbar-width: none; }
+  .work-section { justify-content: flex-start; padding-top: 85px; overflow-y: auto; scrollbar-width: none; }
   .work-section::-webkit-scrollbar { display: none; }
   .work-heading { margin-bottom: 12px; }
   .work-heading h2 { font-size: 28px; }
-  .portfolio-browser { flex-shrink: 0; }
   .intro-biography { top: calc(50% + var(--name-size) + var(--name-gap) + 14px); }
   .intro-welcome { font-size: 15px; margin-bottom: 4px; }
   .intro-summary { font-size: 12px; line-height: 1.5; }
   .intro-role { bottom: calc(50% + var(--name-size) + var(--name-gap) + 14px); }
 }
 @media (max-height: 740px) and (max-width: 850px) {
-  .work-section { padding-top: 90px; padding-bottom: 25px; }
   .work-heading h2 { font-size: 28px; }
   .work-heading { margin-bottom: 12px; }
-  .browser-trail { margin-bottom: 8px; }
-  .browser-trail button { min-height: 32px; }
-  .wheel-stage { height: clamp(210px, 40svh, 270px); }
+}
+@media (max-width: 600px) { .work-section { --player-clearance: calc(116px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-height: 500px) {
+  .work-section { padding-top: 70px; }
+  .work-heading { margin-bottom: 8px; }
+  .work-heading h2 { font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { .home-intro, .work-section { transform: none; will-change: auto; } }

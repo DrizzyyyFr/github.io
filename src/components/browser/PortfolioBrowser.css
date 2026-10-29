@@ -1,26 +1,110 @@
-.portfolio-browser { position: relative; width: 100%; }
-/* The trail is the only way back to a parent stage on phones; desktop shows every column at once. */
-.browser-trail { display: none; align-items: center; gap: 14px; margin-bottom: 24px; color: var(--color-accent); }
-.browser-trail button { border: 0; background: none; color: var(--color-muted); padding: 8px 0; text-align: left; font: 10px var(--font-mono); }
-.browser-trail button span { margin-left: 8px; }
-.browser-trail button[aria-current], .browser-trail button:hover:enabled { color: var(--color-text); }
-.browser-trail button:disabled { opacity: .35; cursor: default; }
-.browser-columns { display: grid; grid-template-columns: 1.08fr .86fr 1.12fr; gap: clamp(24px, 3vw, 80px); }
-.browser-column { min-width: 0; position: relative; }
-.browser-branch { opacity: 1; transform: translateX(0); transition: opacity 160ms ease, transform 160ms ease; }
-.browser-branch.is-leaving { opacity: 0; transform: translateX(18px); pointer-events: none; }
-.branch-arrival { animation: branch-unfold 720ms var(--ease-glide) both; }
-@keyframes branch-unfold { from { opacity: 0; transform: translate3d(-45px, 0, -100px) scale(.88); } to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); } }
-.branch-connection { position: absolute; top: calc(50% - 20px); left: calc(clamp(24px, 3vw, 80px) * -1); width: clamp(24px, 3vw, 80px); height: 1px; background: linear-gradient(90deg, #8ddff726, #8ddff799); transform: scaleX(0); transform-origin: left; transition: transform 600ms var(--ease-glide); }
-.branch-connection::after { content: ''; position: absolute; width: 5px; height: 5px; right: 0; top: -2px; border-radius: 50%; background: var(--color-accent); box-shadow: 0 0 12px #8ddff799; }
-.branch-connection.is-connected { transform: scaleX(1); }
-.browser-trail, .branch-connection { opacity: calc(1 - var(--entry-retreat, 0)); translate: calc(var(--entry-retreat, 0) * -75vw) 0; }
-@media (max-width: 850px) {
-  .browser-window { overflow: hidden; margin-inline: -12px; }
-  .browser-columns { display: flex; gap: 0; transform: translateX(calc(var(--mobile-step) * -100%)); transition: transform 750ms var(--ease-glide); }
-  .browser-column { flex: 0 0 100%; padding-inline: 12px; }
-  .browser-trail { display: flex; gap: 10px; margin-bottom: 18px; }
-  .browser-trail button { font-size: 9px; min-height: 40px; max-width: 42%; }
-  .browser-trail button span { margin-left: 5px; }
-  .branch-connection { display: none; }
+/* Rows brighten by transitioning this registered property rather than filter, so each glass
+   layer keeps painting with its own clip-path while it changes. */
+@property --row-shine { syntax: '<number>'; inherits: false; initial-value: .62; }
+
+.portfolio-browser {
+  --row-outline: polygon(0 0, calc(100% - 26px) 0, 100% 50%, calc(100% - 26px) 100%, 0 100%);
+  --tab-outline: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  --open-outline: polygon(16px 0, 100% 0, calc(100% - 16px) 100%, 16px 100%, 0 50%);
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: clamp(20px, 3.2vw, 72px);
+  width: 100%;
+  flex: 0 1 clamp(320px, 62svh, 720px);
+  min-height: 300px;
+}
+.work-index { display: flex; flex-direction: column; gap: clamp(12px, 2.2svh, 26px); min-width: 0; min-height: 0; }
+
+.work-tabs { display: flex; flex-wrap: wrap; gap: 6px clamp(6px, 1vw, 14px); opacity: calc(1 - var(--entry-retreat, 0)); translate: calc(var(--entry-retreat, 0) * -75vw) 0; }
+.work-tab { position: relative; isolation: isolate; border: 0; background: none; padding: 11px clamp(16px, 1.6vw, 26px); color: var(--color-muted); font-size: clamp(13px, .95vw, 16px); transition: color var(--duration-fast); }
+.work-tab::before { content: ''; position: absolute; inset: 0; z-index: -1; clip-path: var(--tab-outline); background: var(--glass-fill); opacity: 0; transition: opacity 300ms; }
+.work-tab:hover, .work-tab[aria-selected='true'] { color: var(--color-text); }
+.work-tab[aria-selected='true']::before { opacity: 1; }
+
+/* The list scrolls inside its column; the padding keeps focus outlines clear of the scroll edge. */
+.work-projects { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: -8px; padding: 8px; scrollbar-width: none; -ms-overflow-style: none; }
+.work-projects::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.work-projects[data-more] { mask-image: linear-gradient(#000 calc(100% - 36px), transparent); }
+.work-project-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: clamp(8px, 1.3svh, 14px); animation: work-unfold 560ms var(--ease-glide) both; }
+@keyframes work-unfold { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+
+.work-row {
+  position: relative; isolation: isolate; width: 100%;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: clamp(14px, 1.8vw, 34px);
+  min-height: clamp(62px, 10.5svh, 112px);
+  padding: clamp(10px, 1.6svh, 18px) clamp(40px, 3.4vw, 64px) clamp(10px, 1.6svh, 18px) clamp(18px, 2vw, 40px);
+  border: 0; background: none; color: var(--color-text); text-align: left; cursor: pointer;
+  translate: calc(var(--entry-pane-retreat, 0) * -75vw) 0;
+  scale: calc(1 - var(--entry-pane-retreat, 0) * .12);
+}
+.work-row-surface { position: absolute; inset: 0; z-index: -1; clip-path: var(--row-outline); background: var(--glass-edge); opacity: .5; transition: opacity 300ms; }
+.work-row-surface::before { content: ''; position: absolute; inset: 1px; clip-path: var(--row-outline); background: var(--glass-fill); filter: brightness(var(--row-shine)); transition: --row-shine 360ms; }
+.work-row::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--color-accent); box-shadow: 0 0 16px #8ddff7aa; opacity: 0; transition: opacity 300ms; }
+.work-row:hover .work-row-surface::before { --row-shine: .82; }
+.work-row[aria-pressed='true'] .work-row-surface { opacity: 1; }
+.work-row[aria-pressed='true'] .work-row-surface::before { --row-shine: 1.25; }
+.work-row[aria-pressed='true']::after { opacity: 1; }
+.work-row-number { font-size: clamp(18px, 1.8vw, 32px); font-weight: 300; color: var(--color-accent); opacity: .75; font-variant-numeric: tabular-nums; }
+.work-row-text { display: grid; gap: 4px; min-width: 0; }
+.work-row-title { font-size: clamp(15px, 1.35vw, 24px); font-weight: 500; letter-spacing: -.02em; line-height: 1.25; color: #d6e6f0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.work-row[aria-pressed='true'] .work-row-title { color: var(--color-text); }
+.work-row-path { font-size: clamp(11px, .85vw, 14px); color: var(--color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The preview card shares the expanded pane's glass and outline, so View project grows it in place. */
+.work-preview {
+  --shard-outline: polygon(0% 2.5%, 1.8% 0%, 97.5% 0%, 100% 3.5%, 98.2% 100%, 1% 98.5%);
+  position: relative; isolation: isolate; align-self: start;
+  display: flex; flex-direction: column; gap: clamp(12px, 1.8svh, 22px);
+  min-width: 0; max-height: 100%;
+  padding: clamp(12px, 1.3vw, 22px);
+}
+.work-preview-surface { position: absolute; inset: 0; z-index: -1; clip-path: var(--shard-outline); background: var(--glass-edge); }
+.work-preview-surface::before { content: ''; position: absolute; inset: 1px; clip-path: var(--shard-outline); background: var(--glass-fill); }
+.work-preview-media { position: relative; flex: 0 1 auto; aspect-ratio: 16 / 9; min-height: 120px; overflow: hidden; background: var(--color-recess); border: 1px solid var(--color-border); animation: work-media-in 420ms ease both; }
+@keyframes work-media-in { from { opacity: 0; } to { opacity: 1; } }
+.work-preview-video, .work-preview-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.work-preview-video { object-fit: cover; }
+.work-preview-image { object-fit: contain; }
+.work-preview-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; padding: 0 clamp(6px, .8vw, 14px) clamp(2px, .4svh, 6px); }
+.work-preview-heading { min-width: 0; }
+.work-preview-title { margin: 0; font-size: clamp(20px, 2.1vw, 40px); font-weight: 500; letter-spacing: -.035em; line-height: 1.2; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.work-preview-path { margin: 4px 0 0; font-size: clamp(12px, .95vw, 16px); color: var(--color-muted); }
+.work-preview.is-entry-source [data-morph-title] { visibility: hidden; }
+.work-open { position: relative; isolation: isolate; flex: none; display: inline-flex; align-items: center; gap: 12px; border: 0; background: none; color: var(--color-text); padding: clamp(12px, 1.6svh, 18px) clamp(24px, 2vw, 38px); font-size: clamp(13px, 1vw, 17px); font-weight: 500; }
+.work-open::before, .work-open::after { content: ''; position: absolute; inset: 0; z-index: -1; clip-path: var(--open-outline); }
+.work-open::before { background: var(--glass-fill); filter: brightness(1.5) saturate(1.2); }
+.work-open::after { background: linear-gradient(110deg, #8ddff73d, transparent 65%); opacity: 0; transition: opacity 200ms; }
+.work-open:hover::after { opacity: 1; }
+.work-open span { color: var(--color-accent); transition: translate 200ms; }
+.work-open:hover span { translate: 4px 0; }
+
+/* Portrait phones and tablets: one column, and the selected row opens to show its preview.
+   The row above already names the project, so the card keeps one title line beside the button. */
+.portfolio-browser.is-stacked { display: flex; flex-direction: column; }
+.is-stacked .work-index { flex: 1 1 auto; }
+.is-stacked .work-preview { margin: 10px 0 4px; max-height: none; }
+.is-stacked .work-preview-media { flex: none; max-height: 38svh; }
+.is-stacked .work-preview-path { display: none; }
+.is-stacked .work-preview-title { -webkit-line-clamp: 1; font-size: clamp(16px, 3.6vw, 24px); }
+.is-stacked .work-open { margin-left: auto; }
+/* Short landscape screens: tighter rows and a one-line card title, so both columns still fit. */
+@media (max-height: 500px) {
+  .portfolio-browser { min-height: 220px; gap: 18px; }
+  .work-index { gap: 10px; }
+  .work-tab { padding: 8px 16px; font-size: 13px; }
+  .work-row { min-height: 54px; padding-block: 8px; }
+  .work-preview { gap: 10px; padding: 10px; }
+  .work-preview-media { min-height: 90px; }
+  .work-preview-path { display: none; }
+  .work-preview-title { -webkit-line-clamp: 1; font-size: 18px; }
+  .work-open { padding: 10px 22px; font-size: 13px; }
+}
+@media (max-width: 600px) {
+  .work-tab { padding: 9px 16px; font-size: 13px; }
+  .work-row { min-height: 60px; gap: 14px; padding: 10px 38px 10px 18px; }
+  .work-row-number { font-size: 18px; }
+  .work-row-title { font-size: 15px; }
+  .work-preview-title { font-size: 19px; }
+  .work-open { padding: 11px 24px; font-size: 13px; }
 }

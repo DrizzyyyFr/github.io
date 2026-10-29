@@ -96,25 +96,31 @@ test('an immediate close cancels the pending frame and restores body state', () 
   expect(jest.getTimerCount()).toBe(0);
 });
 
-test('a new note uses its own shard geometry, updates on resize, and cleans scene retreat', () => {
+test('the preview card grows into the pane, hands over its glass, updates on resize, and cleans scene retreat', () => {
   const fixture = document.createElement('div');
   fixture.className = 'site-layout';
-  fixture.innerHTML = '<div class="scroll-scene"><div role="listbox"><div class="glass-option" data-entry-id="interactions-8-directional-chair-state-animations"><span class="shard-label">Entry</span></div><div class="glass-option"></div></div></div>';
+  fixture.innerHTML = '<div class="scroll-scene"><button class="work-row"></button><button class="work-row"></button><section class="work-preview" data-entry-id="interactions-8-directional-chair-state-animations"><h3 data-morph-title>Entry</h3></section></div>';
   document.body.appendChild(fixture);
-  const pane = fixture.querySelector('.glass-option');
+  const pane = fixture.querySelector('.work-preview');
   pane.getBoundingClientRect = () => ({ left: 200, top: 200, width: 240, height: 100 });
   const previousWidth = window.innerWidth;
   const view = render(<EntryOverlay route={resolvePage(entryPath)} origin={origin} />);
-  expect(screen.getByRole('dialog').style.width).toBe('240px');
+  const dialog = screen.getByRole('dialog');
+  expect(dialog.style.width).toBe('240px');
   expect(pane).toHaveClass('is-entry-source');
+  expect(pane.style.opacity).toBe('1');
+  expect(dialog.style.getPropertyValue('--surface-opacity')).toBe('0');
   act(() => jest.advanceTimersByTime(800));
+  expect(pane.style.opacity).toBe('0');
+  expect(dialog.style.getPropertyValue('--surface-opacity')).toBe('1');
   expect(fixture.style.getPropertyValue('--entry-retreat')).toBe('1');
-  expect(fixture.querySelectorAll('.glass-option')[1].style.getPropertyValue('--entry-pane-retreat')).toBe('1');
+  expect(fixture.querySelectorAll('.work-row')[1].style.getPropertyValue('--entry-pane-retreat')).toBe('1');
   window.innerWidth = 420;
   fireEvent.resize(window);
-  expect(screen.getByRole('dialog').style.width).toBe('400px');
+  expect(dialog.style.width).toBe('400px');
   view.unmount();
   expect(pane).not.toHaveClass('is-entry-source');
+  expect(pane.style.opacity).toBe('');
   expect(fixture.style.getPropertyValue('--entry-retreat')).toBe('');
   expect(fixture.querySelector('.scroll-scene').style.getPropertyValue('--entry-travel')).toBe('');
   window.innerWidth = previousWidth;

@@ -49,20 +49,20 @@ test('four scroll poses reveal the name across the horizon before the underwater
   expect(parseFloat(scene.style.getPropertyValue('--waterline'))).toBeGreaterThan(100);
   expect(state.current.horizon).toBe(.5);
   expect(state.current.sunElevation).toBe(1);
-  expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
 
   scroll(2 / 3);
   expect(scene).toHaveAttribute('data-phase', 'sunset');
   expect(state.current.sunElevation).toBe(0);
   expect(state.current.sunset).toBe(1);
   expect(screen.queryByRole('heading', { name: 'Andre Matthiessen' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
 
   scroll(1);
   expect(scene).toHaveAttribute('data-phase', 'underwater');
   expect(state.current.submerge).toBe(1);
   expect(parseFloat(scene.style.getPropertyValue('--waterline'))).toBeLessThan(0);
-  expect(screen.getByRole('listbox', { name: 'Category' })).toBeInTheDocument();
+  expect(screen.getByRole('tablist', { name: 'Work categories' })).toBeInTheDocument();
   expect(document.querySelector('.work-section')).not.toHaveAttribute('inert');
   expect(screen.getByTestId('ocean-renderer')).toBe(renderer);
 
@@ -109,7 +109,7 @@ test('reduced motion updates the scene immediately and disables water drift', ()
   expect(state.current.sunElevation).toBe(1);
   expect(state.current.reducedMotion).toBe(true);
   scroll(1, 0);
-  expect(screen.getByRole('listbox', { name: 'Category' })).toBeInTheDocument();
+  expect(screen.getByRole('tablist', { name: 'Work categories' })).toBeInTheDocument();
   expect(state.current.submerge).toBe(1);
 });
 
@@ -130,30 +130,26 @@ test('the introduction cue and Work route target their scroll poses, then keyboa
   fireEvent(window, new Event('hashchange'));
   expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 3000, behavior: 'smooth' });
   scroll(1);
-  const category = screen.getByRole('listbox', { name: 'Category' });
+  const category = screen.getByRole('tab', { name: 'Animation' });
   category.focus();
-  fireEvent.keyDown(category, { key: 'ArrowDown' });
+  fireEvent.keyDown(category, { key: 'ArrowRight' });
   fireEvent(window, new Event('hashchange'));
-  act(() => jest.advanceTimersByTime(180));
   expect(window.location.hash).toBe('#/technical-animation');
-  expect(screen.getByRole('option', { name: 'Technical Animation' })).toHaveAttribute('aria-selected', 'true');
-  expect(screen.getByRole('listbox', { name: 'Subcategory' })).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Technical Animation' })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByRole('button', { name: /Parametric Point Cloud Blend Space/ })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('the full click path opens content without replacing the underwater scene, then returns to its shard', () => {
   const { scene, scroll } = renderScene();
   scroll(1);
-  fireEvent.click(screen.getByRole('option', { name: 'Animation', exact: true }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Animation' }));
   fireEvent(window, new Event('hashchange'));
-  act(() => jest.advanceTimersByTime(180));
-  fireEvent.click(screen.getByRole('option', { name: 'Interactions' }));
-  fireEvent(window, new Event('hashchange'));
-  act(() => jest.advanceTimersByTime(180));
-  fireEvent.click(screen.getByRole('option', { name: '8 Directional Chair State Animations' }));
+  fireEvent.click(screen.getByRole('button', { name: /Vehicular Interaction Animations/ }));
+  fireEvent.click(screen.getByRole('button', { name: /View project/ }));
   fireEvent(window, new Event('hashchange'));
   expect(screen.getByRole('dialog')).toBeInTheDocument();
   expect(document.querySelector('.scroll-scene')).toBe(scene);
-  expect(screen.getByLabelText('Chair_InEngine.mp4')).toBeInTheDocument();
+  expect(screen.getByLabelText('Veh_InEngine.mp4')).toBeInTheDocument();
   act(() => jest.advanceTimersByTime(800));
   fireEvent.click(screen.getByRole('button', { name: 'Close entry' }));
   fireEvent(window, new Event('hashchange'));
@@ -161,5 +157,5 @@ test('the full click path opens content without replacing the underwater scene, 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(document.querySelector('.scroll-scene')).toBe(scene);
   expect(scene).toHaveAttribute('data-phase', 'underwater');
-  expect(screen.getByRole('option', { name: '8 Directional Chair State Animations' })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByRole('button', { name: /Vehicular Interaction Animations/ })).toHaveAttribute('aria-pressed', 'true');
 });

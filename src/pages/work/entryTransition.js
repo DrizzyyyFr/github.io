@@ -32,7 +32,7 @@ function outline(source) {
 export function createEntryTransition({ dialog, heading, viewport, back, source, origin, onExited }) {
   const scene = document.querySelector('.scroll-scene');
   const layout = document.querySelector('.site-layout');
-  const siblings = [...document.querySelectorAll('.glass-option')].filter(pane => pane !== source);
+  const siblings = [...document.querySelectorAll('.work-row')].filter(pane => pane !== source);
   const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
   let destination = targetRect();
   const fallback = { left: (window.innerWidth - 340) / 2, top: (window.innerHeight - 112) / 2, width: 340, height: 112 };
@@ -41,13 +41,14 @@ export function createEntryTransition({ dialog, heading, viewport, back, source,
     : origin.current?.rect || source?.getBoundingClientRect();
   if (!sourceRect?.width) sourceRect = fallback;
   const points = outline(source);
-  const label = source?.querySelector('.shard-label');
+  const label = source?.querySelector('[data-morph-title]');
   const labelStyle = label && getComputedStyle(label);
   const sourceFont = parseFloat(labelStyle?.fontSize) || 20;
   const labelRect = label?.getBoundingClientRect();
   const labelScale = source?.offsetWidth ? sourceRect.width / source.offsetWidth : 1;
-  const sourceLeft = (parseFloat(labelStyle?.paddingLeft) || sourceRect.width * .11) * labelScale;
-  const sourceRight = (parseFloat(labelStyle?.paddingRight) || sourceRect.width * .17) * labelScale;
+  const placed = Boolean(labelRect?.width);
+  const sourceLeft = placed ? labelRect.left - sourceRect.left + (parseFloat(labelStyle.paddingLeft) || 0) * labelScale : sourceRect.width * .11;
+  const sourceRight = placed ? sourceRect.left + sourceRect.width - labelRect.right + (parseFloat(labelStyle.paddingRight) || 0) * labelScale : sourceRect.width * .17;
   const sourceTop = labelRect?.height ? labelRect.top - sourceRect.top + (parseFloat(labelStyle?.paddingTop) || 0) * labelScale : Math.max(20, (sourceRect.height - 50) / 2);
   let progress = 0;
   let target = 1;
@@ -61,6 +62,10 @@ export function createEntryTransition({ dialog, heading, viewport, back, source,
     dialog.style.clipPath = clip;
     dialog.style.setProperty('--pane-outline', clip);
     dialog.style.setProperty('--content-reveal', reveal);
+    // The card hands over to the pane: its media fades out while the same glass fades in over it.
+    const handoff = ease(progress, 0, .3);
+    dialog.style.setProperty('--surface-opacity', handoff);
+    if (source) source.style.opacity = String(1 - handoff);
     scene?.style.setProperty('--entry-travel', progress);
     scene?.style.setProperty('--entry-retreat', retreat);
     scene?.style.setProperty('--entry-content-reveal', reveal);
@@ -91,6 +96,7 @@ export function createEntryTransition({ dialog, heading, viewport, back, source,
     if (disposed) return;
     dialog.close();
     source?.classList.remove('is-entry-source');
+    source?.style.removeProperty('opacity');
     const focus = source?.closest('[role="listbox"]') || origin.current?.focus;
     if (focus?.isConnected) focus.focus({ preventScroll: true });
     onExited();
@@ -143,6 +149,7 @@ export function createEntryTransition({ dialog, heading, viewport, back, source,
       disposed = true;
       cancelAnimationFrame(frame);
       source?.classList.remove('is-entry-source');
+      source?.style.removeProperty('opacity');
       siblings.forEach(pane => pane.style.removeProperty('--entry-pane-retreat'));
       ['--entry-travel', '--entry-retreat', '--entry-content-reveal'].forEach(name => scene?.style.removeProperty(name));
       layout?.style.removeProperty('--entry-retreat');
