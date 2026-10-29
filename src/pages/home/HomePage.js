@@ -96,7 +96,7 @@ export default function HomePage({ route }) {
           <h1 id="intro-name"><span className="intro-first">{profile.firstName}</span>{' '}<span className="intro-last">{profile.lastName}</span></h1>
           <div className="intro-biography">
             <p className="intro-welcome">Hey, welcome to my corner of the internet.</p>
-            <p className="intro-summary">I share my animation work, technical systems,<br className="desktop-break" /> and the ideas behind them.</p>
+            <p className="intro-summary">Where I share my animation work, technical systems,<br className="desktop-break" /> and the ideas behind them.</p>
           </div>
         </section>
         <a className="explore-cue" href="#about" aria-label="Scroll to introduction" aria-hidden={!visible.cue} tabIndex={visible.cue ? 0 : -1}><span className="explore-cue-arrow" aria-hidden="true">&darr;</span></a>

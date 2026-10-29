@@ -54,11 +54,12 @@ function usePlayerLayer() {
   return host;
 }
 
-export default function MusicPlayer({ tracks = musicTracks }) {
+export default function MusicPlayer({ tracks = musicTracks, autoplay = true }) {
   const audio = useRef(null);
   const request = useRef(0);
   const playingIntent = useRef(false);
   const rememberedVolume = useRef(5);
+  const cancelAutoplay = useRef(() => {});
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(5);
@@ -70,7 +71,7 @@ export default function MusicPlayer({ tracks = musicTracks }) {
 
   useLayoutEffect(() => { audio.current.volume = volume / 100; }, [volume]);
 
-  const start = () => {
+  const start = onRefused => {
     const attempt = ++request.current;
     playingIntent.current = true;
     setError('');
@@ -79,7 +80,8 @@ export default function MusicPlayer({ tracks = musicTracks }) {
       if (attempt !== request.current) return;
       playingIntent.current = false;
       setPlaying(false);
-      setError('Playback unavailable. Try again.');
+      if (onRefused) onRefused();
+      else setError('Playback unavailable. Try again.');
     });
   };
 
@@ -93,6 +95,25 @@ export default function MusicPlayer({ tracks = musicTracks }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track?.src]);
 
+  // Browsers refuse sound until the visitor first clicks or presses a key, so a
+  // refused autoplay tries again on the first interaction outside the player.
+  useEffect(() => {
+    if (!autoplay || !tracks.length) return undefined;
+    const gestures = ['pointerdown', 'click', 'keydown', 'touchend'];
+    const wait = () => gestures.forEach(name => window.addEventListener(name, retry, true));
+    const stopWaiting = () => gestures.forEach(name => window.removeEventListener(name, retry, true));
+    function retry(event) {
+      if (host.contains(event.target)) return;
+      stopWaiting();
+      if (!playingIntent.current) start(wait);
+    }
+    cancelAutoplay.current = stopWaiting;
+    start(wait);
+    return stopWaiting;
+    // Autoplay is attempted once, when the player first appears.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const selectTrack = next => {
     if (!tracks.length) return;
     const normalized = (next + tracks.length) % tracks.length;
@@ -104,6 +125,7 @@ export default function MusicPlayer({ tracks = musicTracks }) {
   };
 
   const togglePlayback = () => {
+    cancelAutoplay.current();
     if (playing || playingIntent.current) {
       request.current += 1;
       playingIntent.current = false;

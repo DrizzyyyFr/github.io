@@ -24,6 +24,9 @@
   right: 0;
   z-index: 20;
   min-height: 90px;
+  /* Everything sits on the logo's baseline; the padding keeps the logo where centring put it. */
+  align-items: baseline;
+  padding-top: 28px;
   border: 0;
   background: transparent;
   opacity: calc(1 - var(--entry-retreat, 0));
@@ -32,7 +35,7 @@
 
 .identity {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-5);
 }
 
@@ -74,18 +77,25 @@
 .external-link { display: inline-flex; align-items: center; gap: 12px; }
 .site-navigation .external-link { color: var(--color-text); }
 
+/* Pinned to the bottom of the screen with no bar of its own; kept to the right,
+   clear of the music player. */
 .site-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
   min-height: 74px;
-  border-top: 1px solid var(--color-border);
+  justify-content: flex-end;
+  gap: var(--space-5);
   color: var(--color-muted);
   font-size: var(--text-caption);
-  background: var(--color-background);
+  pointer-events: none;
 }
 
 .footer-role { font-family: var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 
 @media (max-width: 600px) {
-  .site-header { min-height: 78px; }
+  .site-header { min-height: 78px; padding-top: 22px; }
   .identity-name { display: none; }
   .site-navigation { gap: 15px; font-size: 10px; }
   .site-navigation .external-link { display: none; }
