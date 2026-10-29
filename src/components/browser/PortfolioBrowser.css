@@ -1,5 +1,6 @@
 .portfolio-browser { position: relative; width: 100%; }
-.browser-trail { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; color: var(--color-accent); }
+/* The trail is the only way back to a parent stage on phones; desktop shows every column at once. */
+.browser-trail { display: none; align-items: center; gap: 14px; margin-bottom: 24px; color: var(--color-accent); }
 .browser-trail button { border: 0; background: none; color: var(--color-muted); padding: 8px 0; text-align: left; font: 10px var(--font-mono); }
 .browser-trail button span { margin-left: 8px; }
 .browser-trail button[aria-current], .browser-trail button:hover:enabled { color: var(--color-text); }
@@ -18,7 +19,7 @@
   .browser-window { overflow: hidden; margin-inline: -12px; }
   .browser-columns { display: flex; gap: 0; transform: translateX(calc(var(--mobile-step) * -100%)); transition: transform 750ms var(--ease-glide); }
   .browser-column { flex: 0 0 100%; padding-inline: 12px; }
-  .browser-trail { gap: 10px; margin-bottom: 18px; }
+  .browser-trail { display: flex; gap: 10px; margin-bottom: 18px; }
   .browser-trail button { font-size: 9px; min-height: 40px; max-width: 42%; }
   .browser-trail button span { margin-left: 5px; }
   .branch-connection { display: none; }

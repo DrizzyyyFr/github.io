@@ -66,9 +66,8 @@ export default function WheelPicker({ label, items, selectedIndex = 0, onChange,
   };
 
   return <section className={`wheel-picker wheel-picker--${variant}`} aria-label={`${label} selector`}>
-    <div className="wheel-heading"><h3 id={`${id}-label`}>{label}</h3><span>{String(selected + 1).padStart(2, '0')} <span className="wheel-count-divider">/</span> {String(items.length).padStart(2, '0')}</span></div>
     <div className="wheel-stage" ref={list} role="listbox" tabIndex={0}
-      aria-labelledby={`${id}-label`} aria-activedescendant={items[selected] ? `${id}-${items[selected].id}` : undefined}
+      aria-label={label} aria-activedescendant={items[selected] ? `${id}-${items[selected].id}` : undefined}
       aria-orientation="vertical" onKeyDown={keyDown}
       onTouchStart={event => { touch.current = { x: event.touches[0].clientX, y: event.touches[0].clientY }; }}
       onTouchEnd={event => {

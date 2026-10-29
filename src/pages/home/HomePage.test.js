@@ -6,7 +6,6 @@ jest.mock('./OceanScene', () => jest.fn(() => <div data-testid="ocean-renderer" 
 
 beforeEach(() => {
   jest.useFakeTimers();
-  jest.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
   OceanScene.mockImplementation(() => <div data-testid="ocean-renderer" />);
   window.history.replaceState(null, '', '/');
   window.matchMedia = () => ({ matches: false });

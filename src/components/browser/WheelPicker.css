@@ -1,7 +1,4 @@
 .wheel-picker { min-width: 0; width: 100%; }
-.wheel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 18px; color: var(--color-muted); font: 10px var(--font-mono); letter-spacing: .12em; }
-.wheel-heading h3 { margin: 0; text-transform: uppercase; font: inherit; }
-.wheel-count-divider { opacity: .4; margin: 0 5px; }
 .wheel-stage { position: relative; height: clamp(290px, 46vh, 500px); isolation: isolate; touch-action: pan-y; overflow: clip; mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent); }
 .wheel-stage:focus-visible { outline-offset: -8px; }
 .glass-option { position: absolute; top: calc(50% - 64px); left: 3%; width: 94%; height: 128px; display: flex; align-items: center; transform-origin: center; cursor: pointer; user-select: none; will-change: transform, opacity; filter: drop-shadow(0 10px 12px #040e221c); }
@@ -18,7 +15,7 @@
 .glass-option:hover .shard-action { right: 7%; }
 .glass-option { translate: calc(var(--entry-pane-retreat, 0) * -75vw) 0; scale: calc(1 - var(--entry-pane-retreat, 0) * .18) calc(1 - var(--entry-pane-retreat, 0) * .30); }
 .glass-option.is-entry-source { visibility: hidden; }
-.wheel-heading, .wheel-controls { opacity: calc(1 - var(--entry-retreat, 0)); translate: calc(var(--entry-retreat, 0) * -75vw) 0; }
+.wheel-controls { opacity: calc(1 - var(--entry-retreat, 0)); translate: calc(var(--entry-retreat, 0) * -75vw) 0; }
 .wheel-picker--subcategory .glass-option { height: 82px; top: calc(50% - 41px); left: 7%; width: 86%; }
 .wheel-picker--subcategory .shard-label { font-size: clamp(14px, 1.08vw, 20px); }
 .wheel-picker--entry .glass-option { height: 120px; top: calc(50% - 60px); }

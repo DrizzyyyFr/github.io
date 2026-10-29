@@ -36,7 +36,7 @@
 .work-section:not([inert]) { pointer-events: auto; }
 .work-heading { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: clamp(18px, 3vh, 40px); gap: 20px; opacity: calc(1 - var(--entry-retreat)); translate: calc(var(--entry-retreat) * -75vw) 0; }
 .work-heading h2 { margin: 0; font-size: clamp(28px, 3vw, 60px); letter-spacing: -.045em; line-height: 1.1; font-weight: 450; }
-.work-heading h2 > span { color: var(--color-sunrise-accent); }
+.work-heading h2 > span { color: var(--color-accent); }
 .scene-progress { position: absolute; left: var(--page-gutter); right: var(--page-gutter); bottom: 20px; height: 1px; background: #b0d8ed12; pointer-events: none; }
 .scene-progress span { display: block; width: 100%; height: 1px; background: linear-gradient(90deg, var(--color-accent), var(--color-sunrise-accent)); transform-origin: left; transform: scaleX(var(--progress)); }
 @media (max-width: 850px) {

@@ -25,48 +25,21 @@ afterEach(() => {
   delete HTMLElement.prototype.hidePopover;
 });
 
-test('each new player starts at five percent and plays automatically', () => {
+test('each new player starts at five percent and never plays automatically', () => {
   const view = render(<MusicPlayer tracks={tracks} />);
   const audio = screen.getByTestId('soundtrack-audio');
   expect(audio.volume).toBe(.05);
   expect(screen.getByRole('slider', { name: 'Music volume' })).toHaveValue('5');
-  expect(audio.play).toHaveBeenCalledTimes(1);
-  expect(screen.getByRole('button', { name: 'Pause music' })).toBeInTheDocument();
+  expect(audio.play).not.toHaveBeenCalled();
   fireEvent.change(screen.getByRole('slider', { name: 'Music volume' }), { target: { value: '38' } });
   expect(audio.volume).toBe(.38);
   view.unmount();
-  render(<MusicPlayer tracks={tracks} autoplay={false} />);
+  render(<MusicPlayer tracks={tracks} />);
   expect(screen.getByTestId('soundtrack-audio').volume).toBe(.05);
 });
 
-test('a refused autoplay starts on the first interaction outside the player', async () => {
-  HTMLMediaElement.prototype.play.mockRejectedValueOnce(new Error('NotAllowedError'));
-  await act(async () => { render(<MusicPlayer tracks={tracks} />); });
-  const audio = screen.getByTestId('soundtrack-audio');
-  expect(screen.getByRole('button', { name: 'Play music' })).toBeInTheDocument();
-  expect(screen.getByRole('status')).toHaveTextContent('Paused');
-  fireEvent.pointerDown(screen.getByRole('region', { name: 'Music player' }));
-  expect(audio.play).toHaveBeenCalledTimes(1);
-  fireEvent.pointerDown(document.body);
-  expect(audio.play).toHaveBeenCalledTimes(2);
-  expect(screen.getByRole('button', { name: 'Pause music' })).toBeInTheDocument();
-  fireEvent.keyDown(document.body);
-  expect(audio.play).toHaveBeenCalledTimes(2);
-});
-
-test('pressing play or pause cancels the autoplay retry', async () => {
-  HTMLMediaElement.prototype.play.mockRejectedValueOnce(new Error('NotAllowedError'));
-  await act(async () => { render(<MusicPlayer tracks={tracks} />); });
-  const audio = screen.getByTestId('soundtrack-audio');
-  fireEvent.click(screen.getByRole('button', { name: 'Play music' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Pause music' }));
-  fireEvent.pointerDown(document.body);
-  expect(audio.play).toHaveBeenCalledTimes(2);
-  expect(screen.getByRole('button', { name: 'Play music' })).toBeInTheDocument();
-});
-
 test('playback, track selection, seeking, and volume share the same audio element', () => {
-  render(<MusicPlayer tracks={tracks} autoplay={false} />);
+  render(<MusicPlayer tracks={tracks} />);
   const audio = screen.getByTestId('soundtrack-audio');
   fireEvent.click(screen.getByRole('button', { name: 'Play music' }));
   expect(screen.getByRole('button', { name: 'Pause music' })).toBeInTheDocument();
@@ -89,7 +62,7 @@ test('playback, track selection, seeking, and volume share the same audio elemen
 });
 
 test('the controls move above an open native dialog without replacing or pausing audio', async () => {
-  render(<MusicPlayer tracks={tracks} autoplay={false} />);
+  render(<MusicPlayer tracks={tracks} />);
   const audio = screen.getByTestId('soundtrack-audio');
   const player = screen.getByRole('region', { name: 'Music player' });
   const host = player.parentNode;
@@ -112,7 +85,7 @@ test('the controls move above an open native dialog without replacing or pausing
 });
 
 test('playlist continues on ended and reports a playback failure without pretending to play', async () => {
-  render(<MusicPlayer tracks={tracks} autoplay={false} />);
+  render(<MusicPlayer tracks={tracks} />);
   const audio = screen.getByTestId('soundtrack-audio');
   fireEvent.click(screen.getByRole('button', { name: 'Play music' }));
   fireEvent.ended(audio);
