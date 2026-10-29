@@ -3,17 +3,21 @@
 .wheel-stage:focus-visible { outline-offset: -8px; }
 .glass-option { position: absolute; top: calc(50% - 64px); left: 3%; width: 94%; height: 128px; display: flex; align-items: center; transform-origin: center; cursor: pointer; user-select: none; will-change: transform, opacity; filter: drop-shadow(0 10px 12px #040e221c); }
 .shard-surface { position: absolute; inset: 0; clip-path: var(--shard-outline); background: var(--glass-edge); padding: 1px; }
-/* Selection glow and reflection sweep transition these registered properties instead of
-   filter, transform and opacity. Those three run as separate GPU layers, which can drop the
-   shard's clip-path for a frame and flash the pane's full rectangle as it is selected. */
+/* Every painted layer of a shard carries its own clip-path. The parent's clip did not reach
+   ::after in the browser, which drew its edge bands as a faint rectangle around the pane.
+   The glow and sweep transition registered properties instead of filter, transform and
+   opacity, so selecting a shard doesn't split its layers onto the GPU. The reflection is
+   clipped on a stationary box and slides its band inside, so the cut doesn't travel with it. */
 @property --shard-shine { syntax: '<number>'; inherits: false; initial-value: 1; }
 @property --shard-saturation { syntax: '<number>'; inherits: false; initial-value: 1; }
 @property --shard-sweep { syntax: '<percentage>'; inherits: false; initial-value: -35%; }
 @property --shard-glint { syntax: '<number>'; inherits: false; initial-value: .2; }
 .shard-surface::before { content: ''; position: absolute; inset: 1px; clip-path: var(--shard-outline); background: var(--glass-fill); filter: brightness(var(--shard-shine)) saturate(var(--shard-saturation)); transition: opacity 450ms, --shard-shine 450ms, --shard-saturation 450ms; }
-.shard-surface::after { content: ''; position: absolute; inset: 0; background: linear-gradient(118deg, #aff8ff15 0 9%, transparent 9% 84%, #6ecded0d 84%); }
-.shard-reflection { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, #beeaff26 49%, #e7f8ff08 52%, transparent 65%); transform: translateX(var(--shard-sweep)); opacity: var(--shard-glint); transition: --shard-sweep 1000ms var(--ease-glide), --shard-glint 700ms; }
-.is-selected .shard-reflection, .glass-option:hover .shard-reflection { --shard-sweep: 24%; --shard-glint: 1; }
+.shard-surface::after { content: ''; position: absolute; inset: 0; clip-path: var(--shard-outline); background: linear-gradient(118deg, #aff8ff15 0 9%, transparent 9% 84%, #6ecded0d 84%); }
+.shard-reflection { position: absolute; inset: 0; clip-path: var(--shard-outline); opacity: var(--shard-glint); transition: --shard-glint 700ms; }
+.shard-reflection::before { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, #beeaff26 49%, #e7f8ff08 52%, transparent 65%); transform: translateX(var(--shard-sweep)); transition: --shard-sweep 1000ms var(--ease-glide); }
+.is-selected .shard-reflection, .glass-option:hover .shard-reflection { --shard-glint: 1; }
+.is-selected .shard-reflection::before, .glass-option:hover .shard-reflection::before { --shard-sweep: 24%; }
 .is-selected .shard-surface::before { --shard-shine: 1.35; --shard-saturation: 1.15; }
 .glass-option:hover .shard-surface::before { --shard-shine: 1.55; --shard-saturation: 1; }
 .shard-label { position: relative; z-index: 1; width: 100%; padding: 20px 17% 20px 11%; font-size: clamp(20px, 1.65vw, 31px); line-height: 1.25; letter-spacing: -.035em; font-weight: 500; color: var(--color-text); overflow-wrap: anywhere; text-wrap: balance; }
