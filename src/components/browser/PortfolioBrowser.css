@@ -1,0 +1,25 @@
+.portfolio-browser { position: relative; width: 100%; }
+.browser-trail { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; color: var(--color-accent); }
+.browser-trail button { border: 0; background: none; color: var(--color-muted); padding: 8px 0; text-align: left; font: 10px var(--font-mono); }
+.browser-trail button span { margin-left: 8px; }
+.browser-trail button[aria-current], .browser-trail button:hover:enabled { color: var(--color-text); }
+.browser-trail button:disabled { opacity: .35; cursor: default; }
+.browser-columns { display: grid; grid-template-columns: 1.08fr .86fr 1.12fr; gap: clamp(24px, 3vw, 80px); }
+.browser-column { min-width: 0; position: relative; }
+.browser-branch { opacity: 1; transform: translateX(0); transition: opacity 160ms ease, transform 160ms ease; }
+.browser-branch.is-leaving { opacity: 0; transform: translateX(18px); pointer-events: none; }
+.branch-arrival { animation: branch-unfold 720ms var(--ease-glide) both; }
+@keyframes branch-unfold { from { opacity: 0; transform: translate3d(-45px, 0, -100px) scale(.88); } to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); } }
+.branch-connection { position: absolute; top: calc(50% - 20px); left: calc(clamp(24px, 3vw, 80px) * -1); width: clamp(24px, 3vw, 80px); height: 1px; background: linear-gradient(90deg, #8ddff726, #8ddff799); transform: scaleX(0); transform-origin: left; transition: transform 600ms var(--ease-glide); }
+.branch-connection::after { content: ''; position: absolute; width: 5px; height: 5px; right: 0; top: -2px; border-radius: 50%; background: var(--color-accent); box-shadow: 0 0 12px #8ddff799; }
+.branch-connection.is-connected { transform: scaleX(1); }
+.browser-trail, .branch-connection { opacity: calc(1 - var(--entry-retreat, 0)); translate: calc(var(--entry-retreat, 0) * -75vw) 0; }
+@media (max-width: 850px) {
+  .browser-window { overflow: hidden; margin-inline: -12px; }
+  .browser-columns { display: flex; gap: 0; transform: translateX(calc(var(--mobile-step) * -100%)); transition: transform 750ms var(--ease-glide); }
+  .browser-column { flex: 0 0 100%; padding-inline: 12px; }
+  .browser-trail { gap: 10px; margin-bottom: 18px; }
+  .browser-trail button { font-size: 9px; min-height: 40px; max-width: 42%; }
+  .browser-trail button span { margin-left: 5px; }
+  .branch-connection { display: none; }
+}

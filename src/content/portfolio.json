@@ -1,0 +1,157 @@
+{
+  "categories": [
+    {
+      "id": "animation",
+      "label": "Animation",
+      "subcategories": [
+        {
+          "id": "interactions",
+          "label": "Interactions",
+          "entries": [
+            {
+              "id": "interactions-8-directional-chair-state-animations",
+              "title": "8 Directional Chair State Animations",
+              "folder": "",
+              "body": "\n# Chair Interaction states.\n### In Out, Directional, Idle. In Engine.\n\n![[Chair_InEngine.mp4]]"
+            },
+            {
+              "id": "interactions-vehicular-interaction-animations",
+              "title": "Vehicular Interaction Animations",
+              "folder": "",
+              "body": "# Synchronised Vehicle Interaction Animation's to protoype systems, usage in personal project.\n\n## Vehicle Entries 3-directional.\n![[2026-03-16 20-34-39.mp4]]\n\n## Trunk In and Out states.\n![[2026-03-16 20-43-18.mp4]]\n\n## Result in Engine.\n![[Veh_InEngine.mp4]]\n# Medieval GTA, say less :D\n\n\n"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "technical-animation",
+      "label": "Technical Animation",
+      "subcategories": [
+        {
+          "id": "animation-systems",
+          "label": "Animation Systems",
+          "entries": [
+            {
+              "id": "animation-systems-ppcbs-parametric-point-cloud-blend-space",
+              "title": "Parametric Point Cloud Blend Space",
+              "folder": "PPCBS",
+              "body": "# | PPCBS | A 3-Dimensional Blend-Space |\n\nHow many nice words can we fit in, to make it sound spacey?\nAlot!\n\n### PPCBS is a 3-Dimensional Blend-Space allowing Technical Animators to create complex locomotion systems, which purpose to facilitate creation of states such as Swimming, Flying but also Grounded Locomotion which provides additional input to allow sampling data such as Slopes or Stances.\n\n\n#### Providing multiple blend algorithm's to support and cover varying use-cases, instead of guessing or hard-coding these, allowing designers to create complex and visually stunning Gameplay Animation Logic that fits their needs unrestricted and easy to implement.\n\n##### These could be Omni-Directional Movement Spaces, provided the sampled space is correctly lined up. Non Planar Movement Behaviors and many more.\n\n### Synchronizing Animations making sure their cyclic phase matches, which is useful in Grounded, but also Swimming scenarios, to avoid muddy transitions, sliding feet and bunny hopping.\n\n\n\n## Runtime and Editor Showcase.\n\n<iframe width=\"560\" height=\"315\"  \nsrc=\"https://www.youtube.com/embed/YPJ0_ISq-yg\"  \ntitle=\"YouTube video\"  \nframeborder=\"0\"  \nallowfullscreen>  \n</iframe>\n\n\n---\n\n\nIt is still pretty Experimental, and i am not that happy with the Editor Tools and Visibility needs to still be iterated upon heavily.\nI will plan to deploy an evaluation piece for testing purposes only, \nstay tuned and have a NICE DAY :) ."
+            }
+          ]
+        },
+        {
+          "id": "automation",
+          "label": "Automation",
+          "entries": [
+            {
+              "id": "automation-phase-and-footstep-s-1-foot-2-foot-bang-there-sound-there-lets-automate",
+              "title": "1 foot, 2 foot, bang there, sound there. lets Automate!",
+              "folder": "Phase and Footstep's",
+              "body": "\n# Automation of Foot Data.\n\n![[Screenshot 2026-02-19 215431.png]]\n\n- 1. Right Foot Contact Curve.\n- 2. Left Foot Contact Curve.\n- 3. Phase.\n\nNot Visualized here, but also:\n- Automated Placement of Sync Markers.\n- Automated Placement of Foot Step Audio Callbacks, based on stride length or impacting velocity.\n\nModular structure any amount of legs!\n\nAutomating tedious tasks is important to me, since this will free up resource usage and allow the Animation Department to focus more on Creative Tasks :).\n\n## MORE AUTOMATION = MORE ANIMATIONS!!!!!!"
+            }
+          ]
+        },
+        {
+          "id": "downloads",
+          "label": "Downloads",
+          "entries": [
+            {
+              "id": "download",
+              "title": "Download",
+              "folder": "",
+              "body": "# Procedural Animation Toolkit (PATK)\n\n### Contents\n- **Look-At Solver**\n- **Profiling Nodes**\n### Download\n\n[![Unreal Engine 5.7.3](https://img.shields.io/badge/Unreal%20Engine-5.7.3-1abc9c?style=for-the-badge&logo=unreal-engine&logoColor=white&labelColor=2c3e50&borderRadius=10)](https://drive.google.com/uc?export=download&id=165xr9MpVCVsiVHpLAcQddlizlgIJLFbc)\n\n>**Disclaimer:** Source code is not included. This toolkit is designed to work only with **official, shipped versions of Unreal Engine** and **does not support custom engine editors or modified builds**.\n\n>While this distribution is provided primarily for **evaluation purposes**, it may also be used in **shipped products** without restriction.\n"
+            }
+          ]
+        },
+        {
+          "id": "optimization-and-profiling",
+          "label": "Optimization and Profiling",
+          "entries": [
+            {
+              "id": "optimization-and-profiling-profiling-anim-graphs",
+              "title": "Profiling Anim Graphs!",
+              "folder": "",
+              "body": "Profiling Animation Graphs can sometimes be tricky, especially in large systems where evaluation or code execution depends on nodes existing throughout the Anim Graph and maintaining valid node references.\n\nIn simpler cases, it’s possible to override certain graph evaluations using **pose caching**. \nThis can work well, but only if dependencies like the ones mentioned above don’t prevent proper graph evaluation. Even then, the process can become tedious.\n\nWe can get a general overview of which systems affect performance using `stat anim` or Unreal Insights tracing. However, this still leaves a lot of room for guesswork, it works, but it can only hint.\n\nTo speed up this process, I created two custom nodes that allow me to evaluate the cost of specific sections throughout the Anim Graph without having to unplug layers or disconnect nodes.\n\n![[Pasted image 20260301180014.png]]\n\nThese nodes automatically create a **stat scope cycle counter** based on their assigned section name.\n\nWe can place multiple instances of them throughout the Anim Graph to evaluate which sections are the most expensive, especially when optimization becomes necessary.\n\nThis would look as follows:\n![[Pasted image 20260301180607.png]]\n\nUsing `Stat PATK_Profiling 1`, we can enable the custom stat group, confirm that the scope counters are registered correctly, and inspect the timing costs for each instrumented section of the Anim Graph.\n\nResulting:\n![[Pasted image 20260301181028.png]]\n\n#### Yea we name brand cause this is Adidas :D.\n\n![[2026-03-01 18-18-26.mp4]]\n\n![[Pasted image 20260301182237.png]]\n\n![[2026-03-01 18-26-36.mp4]]\n\nClearly showcasing that we can efficiently combat unoptimized features.  \n**Decimate. Eliminate. The numbers!!!!!!!!**\n"
+            }
+          ]
+        },
+        {
+          "id": "physical-systems",
+          "label": "Physical Systems",
+          "entries": [
+            {
+              "id": "physical-systems-physia-framework-to-solve-procedural-active-ragdolls",
+              "title": "Physia - Framework to solve Procedural Active Ragdolls",
+              "folder": "",
+              "body": "\n# Work in progress!\n\n#### I'd get more into detail about the system in the future, if i find free time.\nTo cut it short its a System that articulates **Physical Bodies Procedurally** using Solvers to fill gaps where authored animations struggle or require extensive amounts of Animation Coverage.\n\n<iframe width=\"560\" height=\"315\"  \nsrc=\"https://www.youtube.com/embed/vGiD6DGbWx0\"  \ntitle=\"YouTube video\"  \nframeborder=\"0\"  \nallowfullscreen>  \n</iframe>\n\n---\nDisclaimer: Containing mixed footage of old and new dev footage.\n\n# Project Goals.\n\n**Implemented.**\n- Native API to articulate humanoid bodies.\n- ImGui debugging to keep track and facilitate usage.\n- Analytical Solvers to solve Bracing, Balancing, Foot-placement and many more.\n- Custom IK Solver to control Limbs(Arms and Legs).\n- From World to Ego rewrite, primarily to solve ML later.\n- Exposed some of the functionality to BP_Graph.\n\n**Forward Looking.**\n- Create a system that is reliable, efficient and intuitive to use for designers.\n- Expose more functionality to unreal's blueprint graph.\n- Expose native functions and solvers to help with more complex tasks.\n\n**Level 2.**\n- Create a Machine Learning Pipeline to facilitate training of physical models.\n- Supply Pre-trained Model's for step and balancing tasks, to provide out of the box, more grounded and natural results."
+            }
+          ]
+        },
+        {
+          "id": "procedural-systems",
+          "label": "Procedural Systems",
+          "entries": [
+            {
+              "id": "procedural-systems-lookat-concept-and-introduction",
+              "title": "Concept and Introduction",
+              "folder": "LookAt",
+              "body": "\n### Limitations of Traditional Look-At Solvers\n\nTraditional look-at solvers usually offer limited control. \nMost simply use a look-at constraint to orient a bone towards a point of interest in the world. \nThis works to a certain degree, but humans do more than that.\n\nMore complex solvers can introduce issues across poses. \nForces may blend out in certain scenarios, which could easily break the overall pose. \nSolving look-at constraints additively on top of existing animation can cause further problems. \nFor example, if the authored animation already has the character looking left, the head may overextend and overshoot the target for a short period before settling back.\n\nNow, what can we do to solve this?\n\n### I Googled, it’s fresh, **the first one**!\n\nI present a novel approach to solving look-ats that introduces a **state machine system**, allowing for finer control across states such as gaits, stance, emotion and context. \n\n### Conveying Emotion Beyond Facial Expressions.\n\nFacial expressions are not the only thing that define emotion, posture plays a key role as well. \nIf I am angry, I may tilt my head down; similarly, I may look down when intimidated. \nLooking up can convey dominance, while leaning my head left or right adds nuance. \nThese subtle movements support a character’s believability and help convey emotion beyond facial expressions\n\n### Eyes don't lie!\n\nEyes were important to me too, and I focused on integrating solving for eyes as well, parametrizing features, as those can change how a character feels based on states like being drunk or under the influence of substances.\n\nSo, based on key observations made from assumptions splitting characteristics, I tried to expose full control over the feel of characters depending on the states described above.\n\n### Solving Chains.\n\nPer-bone controlled contribution to the authored pose further allows us to dial in and tweak the system.\n\nTo avoid expensive evaluation, we use a root-to-tip solve. \nI considered introducing forward-backward passes iterating a couple of times to distribute the contribution across the whole chain, but this was not necessary. \nThe simple approach already gives great results, especially considering the state machine.\n\nA tip-to-root solve would be slightly more computationally expensive, \nIn fact, it could be problematic without a forward-backward solving pass, \nas the positioning of the chain may shift unpredictably.\n\n### Constraints and Anatomical Correctness.\n\nSimilarly to creating constraints for a physically articulated body, parent-space constraints were crucial to keep the joints in natural poses and ensure the look-at solver did not produce anatomically incorrect orientations. \nFurthermore, the system is designed to allow these constraints to be modified at runtime.\n\n### Mix And Mash.\n\nBy using look-at configurations that switch based on a state machine, \nthe look-at node blends naturally, \navoiding pops regardless of how complex the new configuration is. \nThis approach allows designers to create situation-specific configurations and blend between them seamlessly using a state machine, either natively or through Unreal’s editor node graphs.\n\n### Flexibility Across Characters.\n\nFurthermore, it was important to ensure the system could handle complex characters and a variety of creatures, allowing the same solver to be repurposed without creating custom solutions for each archetype.\n\nImagine a Medusa with 50 snakes on her head, yep, works.\n\nRig conventions and transforms differ across rigs, which is why it is important to expose these settings explicitly rather than making assumptions.\n\n### Outro.\n\nI hope this gives you a general idea of the approach to take going forward if you want to create a similar/better system. \nI intentionally haven’t included code snippets or source code; \nmy goal is to provoke thought and let you design the solution based on your own ideas.\n\nResults here : [[L-A Slides]].\n"
+            },
+            {
+              "id": "procedural-systems-lookat-documentation-getting-started",
+              "title": "Getting Started",
+              "folder": "LookAt / Documentation",
+              "body": "To get started, we’ll likely want to **download it if you haven’t already**: [[Download]]\n\n#### Okay, great, let’s start.  \nOpening the Anim Graph, we would likely navigate to the **Procedural Anim Layer**.  \nRight-clicking, we search for a node called: **PA_TK_LookAt**.  \nThis node appears :)\n![[Screenshot 2026-03-01 153436.png]]\n\n#### Now, at first it doesn’t look like much, but let’s check the **Details Panel**, shall we?\n![[Pasted image 20260301154152.png]]\n\nLet’s ignore the **Fallback sections**, since their sole purpose is **backwards compatibility** with older iterations.\n\n- **Annotated first**: This is our **Look At Target Location**, which defines and sets the point in **world space** that we want the character to focus on.\n\n- **Second**: Exposes the **Look At Config**, which holds all the necessary data to solve the look-at.\n\nHere, we want to:\n\n1. Click the **Bind** button and expose the pin.\n2. Drag off the node and **promote it to a variable**.\n\nFinally, **compile and save**!\n\n#### Look At Config.\n\nLets Look at the Look at Config!\n![[Pasted image 20260301155506.png]]\n\nThe first thing appearing is the **Bones** area, which holds a collection of **structurized bone configurations** for our affected bone chain, more on that later.\n\nThe second are the **Eyes**, same here, but solved differently.\n\nThen we have our **Max Look At Angle in Degrees**, which is **per bone level**, always relative to the parent. \nLet’s set it to **90** for now.\n\n**Look At Target Smooth Speed** uses **spherical interpolation smoothing**, which helps when the target changes focus, moving towards the target relative to the component, our character.\n\n**Config Blend Speed** controls how quickly a newly blended config blends in, this is useful if we use a **state machine** otherwise can be ignored.\n\n#### Look At Config.\n\n##### Lets add a bone!\n![[Pasted image 20260301160749.png]]\n\nlets assign our first bone in the chain!:\n![[Pasted image 20260301160945.png]]\n\nMoving forward, we have our **local space axis conventions**.  \nThis means we need to check which axes our rig uses: the **forward axis** the one we want pointing in the direction towards the target, and the **up axis**, the one that points up basically :).  \nLet’s open our rig and **validate which axes these are**.\n![[Pasted image 20260301161514.png]]\nY Forward, X Up!\n\nOkay:\n![[Pasted image 20260301161813.png]]\n\nNow we have the **Forward Axis Offset Rotation**, which we can tweak later **at runtime**!  \nThe purpose of this is simple: sometimes a bone doesn’t point exactly at the target. This offset lets us **adjust the vector** so the bone correctly aligns with where we want it to look.\n\n\n#### STAY INSIDE!!!\n![[Pasted image 20260301162352.png]]\nThese are the **limits we can set**, which control our **constraint space**.  \nRelative to the parent, they define how much the joint can move using a **swing-twist solve**.  \nWe can **adjust these at runtime**, making it much easier to configure our Look-At configuration.\n\n**Constraint Frame Rotation** allows us to **offset our constraint space**, similar to how we do it with the **Forward Axis Offset Rotation**.  \nIt’s important to **tweak this after setting the Forward Axis Offset**, so everything aligns correctly.\n\n**Max Angular Speed (Deg)** is a **dead variable**, so it can be ignored!\n\n**Look At Blend Weight** controls the **overall procedural contribution** to the pose.\n\nAnd lastly, **Blend Damping Speed** controls **how quickly we orient toward the target**!\n\nLet’s add all the other bones. The important part is to **verify the axis conventions**.  \nTo speed up the process, we can **duplicate the bone configurations multiple times** and switch the affected bones.  \nThe spine chain usually follows a similar convention, but **double-check everything with the asset** to verify the axes!\n\n# Now let’s begin! This is our **baseline**!\n\n![[Pasted image 20260301164404.png]]\nWe should have **something looking like this now**!\n\nRemember, our **Target Location** is at **World 0,0,0**, unless you’ve already replaced it!  \nWe want to move to a location **close to it**.  \nIf that’s not possible, we can **drag a sphere in, copy its world location**, and set that value in our Anim Graph.\n\nSpawning inside the world, our **character should already be looking at something**!\nBut that may not be exactly what we want, so we’re going to **dock our Anim Graph editor** to the **opposite side of our PIE viewport**.  \nThis way, we can **edit and visualize our constraints** in real time!\n\nWith the **struct open on one side** and the **PIE on the other**, we’re going to type in a command that lets us **visualize our constraints and edit them accordingly**:\n``a.proc.lookat.debug 1``\n\n![[Pasted image 20260301165751.png]]\n\nDaniel may say! : Cool, very nice visualization!\n\nAfter tweaking and configuring the config, we want to **save the adjusted values** and likely duplicate it to use as our **baseline**. Let’s rename it and call it **`LookAt_Configurator`**.\n\nWe’re able to duplicate it multiple times depending on how many states we want. The baseline could represent our **Idle/Standing**, while additional ones can be created per **gait** and **stance**.\nIf we plan to use a **state machine**, we should also create one called **`Runtime_LookAt_Config`**.\nThat may look something like what’s visualized here: [[Simple State Machine!]]\n\nNow, considering all of this, our system could be used to solve **Aim Offsets** and **general Look-Ats**.  \nI even tested some applications using a **flashlight to drive an arm chain**, it wasn’t designed for that, but hey, we’re allowed to play! You can see this in our [[L-A Slides]] preview.\n\nApart from that, it has also been tested for **directional blocking in combat situations** or **various movement scenarios during gaits**, which worked great and **expanded the range of motion** without requiring any additional animation authoring.  \nI hope to be able to **reveal more soon**!\n"
+            },
+            {
+              "id": "procedural-systems-lookat-documentation-simple-state-machine",
+              "title": "Simple State Machine!",
+              "folder": "LookAt / Documentation",
+              "body": "\n# Simple Blueprint State Machine!\n\nThis is **fairly easy**. In Blueprint, it could look like this:  \n![[Pasted image 20260301171057.png]]\n\nA **runtime config** that we write to, along with our **configurations for each state**!"
+            },
+            {
+              "id": "procedural-systems-lookat-l-a-slides",
+              "title": "L-A Slides",
+              "folder": "LookAt",
+              "body": "---  \n\n# Look At Solver in Action.\n\n![[Screenshot 2025-06-08 210916.png]]\n--\n![[Screenshot 2025-06-08 212134.png]]\n\n---\n# Solving More Than Just the Spinal Cord.\n\n![[Screenshot 2025-06-10 214341.png]]\n--\n![[Screenshot 2025-07-17 022139.png]]\n\n---\n# Visualizing Emotions Without Relying on Facial Expressions\n\n\n![[Screenshot 2025-12-12 144230.png]]\n--\n![[Screenshot 2025-12-12 144247.png]]\n--\n![[Screenshot 2025-12-12 144302.png]]\n--\n![[Screenshot 2025-12-12 144418.png]]\n# Profiling and Solving varying Creatures.\n\n![[2026-01-26 05-59-20.mp4]]"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "media": {
+    "Chair_InEngine.mp4": "/assets/portfolio/chair-inengine-a926c98790.mp4",
+    "2026-03-16 20-34-39.mp4": "/assets/portfolio/2026-03-16-20-34-39-0b3c131e11.mp4",
+    "2026-03-16 20-43-18.mp4": "/assets/portfolio/2026-03-16-20-43-18-f926f2f295.mp4",
+    "Veh_InEngine.mp4": "/assets/portfolio/veh-inengine-7f3e913f8f.mp4",
+    "Screenshot 2026-02-19 215431.png": "/assets/portfolio/screenshot-2026-02-19-215431-5a04c82d1f.png",
+    "Pasted image 20260301180014.png": "/assets/portfolio/pasted-image-20260301180014-fdb95aa2ec.png",
+    "Pasted image 20260301180607.png": "/assets/portfolio/pasted-image-20260301180607-fcc4f7d367.png",
+    "Pasted image 20260301181028.png": "/assets/portfolio/pasted-image-20260301181028-afbdf6aeae.png",
+    "2026-03-01 18-18-26.mp4": "/assets/portfolio/2026-03-01-18-18-26-0a2c366c43.mp4",
+    "Pasted image 20260301182237.png": "/assets/portfolio/pasted-image-20260301182237-35c45da7bb.png",
+    "2026-03-01 18-26-36.mp4": "/assets/portfolio/2026-03-01-18-26-36-b65fd58e48.mp4",
+    "Screenshot 2026-03-01 153436.png": "/assets/portfolio/screenshot-2026-03-01-153436-7aeffeaa42.png",
+    "Pasted image 20260301154152.png": "/assets/portfolio/pasted-image-20260301154152-87bc39173d.png",
+    "Pasted image 20260301155506.png": "/assets/portfolio/pasted-image-20260301155506-6e176d8dc7.png",
+    "Pasted image 20260301160749.png": "/assets/portfolio/pasted-image-20260301160749-3efad84dbe.png",
+    "Pasted image 20260301160945.png": "/assets/portfolio/pasted-image-20260301160945-6bc592e550.png",
+    "Pasted image 20260301161514.png": "/assets/portfolio/pasted-image-20260301161514-c75925b669.png",
+    "Pasted image 20260301161813.png": "/assets/portfolio/pasted-image-20260301161813-56a8d10830.png",
+    "Pasted image 20260301162352.png": "/assets/portfolio/pasted-image-20260301162352-f71c3ed6d4.png",
+    "Pasted image 20260301164404.png": "/assets/portfolio/pasted-image-20260301164404-38e6e687b0.png",
+    "Pasted image 20260301165751.png": "/assets/portfolio/pasted-image-20260301165751-2db14e876a.png",
+    "Pasted image 20260301171057.png": "/assets/portfolio/pasted-image-20260301171057-044d8e57b6.png",
+    "Screenshot 2025-06-08 210916.png": "/assets/portfolio/screenshot-2025-06-08-210916-82fb0f6eef.png",
+    "Screenshot 2025-06-08 212134.png": "/assets/portfolio/screenshot-2025-06-08-212134-bf9cb4c1d3.png",
+    "Screenshot 2025-06-10 214341.png": "/assets/portfolio/screenshot-2025-06-10-214341-2d7a002e0c.png",
+    "Screenshot 2025-07-17 022139.png": "/assets/portfolio/screenshot-2025-07-17-022139-3f704932a5.png",
+    "Screenshot 2025-12-12 144230.png": "/assets/portfolio/screenshot-2025-12-12-144230-7c49c3ac79.png",
+    "Screenshot 2025-12-12 144247.png": "/assets/portfolio/screenshot-2025-12-12-144247-119c1be786.png",
+    "Screenshot 2025-12-12 144302.png": "/assets/portfolio/screenshot-2025-12-12-144302-c6ef17385a.png",
+    "Screenshot 2025-12-12 144418.png": "/assets/portfolio/screenshot-2025-12-12-144418-add065dbc3.png",
+    "2026-01-26 05-59-20.mp4": "/assets/portfolio/2026-01-26-05-59-20-a115be848e.mp4"
+  }
+}
