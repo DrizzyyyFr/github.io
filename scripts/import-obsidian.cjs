@@ -30,8 +30,12 @@ function importMedia(body) {
   }
 }
 
-const categories = ['Animation', 'Technical Animation'].map(name => {
+// Each category is a top-level vault folder. One that is missing or holds no notes yet is
+// left out, so the site never shows an empty tab.
+const skipped = [];
+const categories = ['Animation', 'Technical Animation', 'Teaching'].flatMap(name => {
   const directory = path.join(vault, name);
+  if (!fs.existsSync(directory)) { skipped.push(name); return []; }
   const groups = new Map();
   for (const file of walk(directory).filter(file => file.endsWith('.md')).sort()) {
     const relative = path.relative(directory, file).split(path.sep);
@@ -48,12 +52,15 @@ const categories = ['Animation', 'Technical Animation'].map(name => {
     if (!groups.has(groupName)) groups.set(groupName, []);
     groups.get(groupName).push(entry);
   }
-  return {
+  if (!groups.size) { skipped.push(name); return []; }
+  // Notes loose at a category's top form its Downloads topic, which comes after the others.
+  const topics = [...groups].sort(([a], [b]) => (a === 'Downloads') - (b === 'Downloads'));
+  return [{
     id: slug(name), label: name,
-    subcategories: [...groups].map(([label, entries]) => ({ id: slug(label), label, entries })),
-  };
+    subcategories: topics.map(([label, entries]) => ({ id: slug(label), label, entries })),
+  }];
 });
 
 fs.mkdirSync(path.join(project, 'src', 'content'), { recursive: true });
 fs.writeFileSync(path.join(project, 'src', 'content', 'portfolio.json'), JSON.stringify({ categories, media }, null, 2) + '\n');
-console.log(JSON.stringify({ categories: categories.map(c => ({ name: c.label, groups: c.subcategories.map(s => ({ name: s.label, entries: s.entries.length })) })), mediaFiles: Object.keys(media).length, missing: [...new Set(missing)] }, null, 2));
+console.log(JSON.stringify({ categories: categories.map(c => ({ name: c.label, groups: c.subcategories.map(s => ({ name: s.label, entries: s.entries.length })) })), mediaFiles: Object.keys(media).length, missing: [...new Set(missing)], emptyCategories: skipped }, null, 2));

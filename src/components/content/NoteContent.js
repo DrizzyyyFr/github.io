@@ -51,18 +51,22 @@ export default function NoteContent({ body }) {
   const blocks = [];
   let paragraph = [];
   let list = [];
+  let numbered = false;
   const flushParagraph = () => {
     if (paragraph.length) blocks.push(<p key={`p-${blocks.length}`}><Inline text={paragraph.join(' ')} /></p>);
     paragraph = [];
   };
   const flushList = () => {
-    if (list.length) blocks.push(<ul key={`l-${blocks.length}`}>{list.map((item, i) => <li key={i}><Inline text={item} /></li>)}</ul>);
+    const List = numbered ? 'ol' : 'ul';
+    if (list.length) blocks.push(<List key={`l-${blocks.length}`}>{list.map((item, i) => <li key={i}><Inline text={item} /></li>)}</List>);
     list = [];
   };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) { flushParagraph(); flushList(); continue; }
+    // `--` splits a slide vertically in an Obsidian slide deck; on the page it is no divider.
+    if (line === '--') { flushParagraph(); flushList(); continue; }
     if (/^```/.test(line)) {
       flushParagraph(); flushList();
       const code = [];
@@ -73,10 +77,10 @@ export default function NoteContent({ body }) {
     const media = line.match(/^!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
     const youtube = line.match(/^::youtube:([\w-]{11})$/);
     const heading = line.match(/^(#{1,6})\s+(.+)$/);
-    const item = line.match(/^(?:[-*]|\d+\.)\s+(.+)$/);
+    const item = line.match(/^([-*]|\d+\.)\s+(.+)$/);
     // Shields linked download badges are represented by their real link and label.
     const badge = line.match(/^\[!\[([^\]]+)\]\([^)]+\)\]\(([^)]+)\)$/);
-    if (media || youtube || heading || /^-{2,}$/.test(line) || badge || line.startsWith('>')) {
+    if (media || youtube || heading || /^-{3,}$/.test(line) || badge || line.startsWith('>')) {
       flushParagraph(); flushList();
       const key = `block-${i}`;
       if (media) blocks.push(<Media key={key} name={media[1]} />);
@@ -88,7 +92,12 @@ export default function NoteContent({ body }) {
       else if (line.startsWith('>')) blocks.push(<blockquote key={key}><Inline text={line.replace(/^>\s?/, '')} /></blockquote>);
       else blocks.push(<hr key={key} />);
     } else if (item) {
-      flushParagraph(); list.push(item[1]);
+      flushParagraph();
+      // Numbered and bulleted items make lists of their own.
+      const isNumbered = /\d/.test(item[1]);
+      if (list.length && isNumbered !== numbered) flushList();
+      numbered = isNumbered;
+      list.push(item[2]);
     } else {
       flushList(); paragraph.push(line.replace(/<[^>]*>/g, ''));
     }

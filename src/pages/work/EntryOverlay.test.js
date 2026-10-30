@@ -1,7 +1,9 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import EntryOverlay from './EntryOverlay';
 import { resolvePage } from '../../config/navigation';
-import { ease, transitionAt } from './entryTransition';
+import { ease, targetRect, transitionAt } from './entryTransition';
+
+const destinationWidth = () => targetRect().width;
 
 const entryPath = '#/animation/interactions/interactions-8-directional-chair-state-animations';
 const source = { left: 800, top: 300, width: 300, height: 120 };
@@ -96,10 +98,48 @@ test('an immediate close cancels the pending frame and restores body state', () 
   expect(jest.getTimerCount()).toBe(0);
 });
 
+test('a project of several pages opens once, and its page bar turns pages inside the same pane', () => {
+  const page = id => resolvePage(`#/technical-animation/procedural-systems/procedural-systems-${id}`);
+  const view = render(<EntryOverlay route={page('lookat-concept-and-introduction')} origin={origin} />);
+  act(() => jest.advanceTimersByTime(800));
+  const pane = screen.getByRole('dialog');
+  expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('LookAt');
+  expect(document.title).toBe('Concept and Introduction · LookAt | Andre Matthiessen');
+  const bar = screen.getByRole('navigation', { name: 'LookAt pages' });
+  const tabs = within(bar).getAllByRole('link');
+  expect(tabs.map(tab => tab.textContent)).toEqual(['01Concept and Introduction', '02Getting Started', '03State Machine Setup', '04Showcase']);
+  expect(tabs[0]).toHaveAttribute('aria-current', 'page');
+  expect(tabs[2]).toHaveAttribute('href', '#/technical-animation/procedural-systems/procedural-systems-lookat-documentation-state-machine-setup');
+  expect(bar.style.opacity).toBe('1');
+  expect(parseFloat(document.querySelector('.entry-scroll').style.top)).toBeGreaterThan(parseFloat(bar.style.top));
+  // The end of a page leads on to the next one.
+  expect(screen.getByRole('link', { name: /Next: Getting Started/ })).toHaveAttribute('href', tabs[1].getAttribute('href'));
+  const scroll = document.querySelector('.entry-scroll');
+  scroll.scrollTop = 400;
+  view.rerender(<EntryOverlay route={page('lookat-documentation-getting-started')} origin={origin} />);
+  // The pane stays open around the new page, which starts from its top.
+  expect(screen.getByRole('dialog')).toBe(pane);
+  expect(pane.style.width).toBe(`${destinationWidth()}px`);
+  expect(scroll.scrollTop).toBe(0);
+  expect(within(bar).getAllByRole('link')[1]).toHaveAttribute('aria-current', 'page');
+  expect(document.title).toBe('Getting Started · LookAt | Andre Matthiessen');
+  view.rerender(<EntryOverlay route={page('lookat-showcase')} origin={origin} />);
+  expect(screen.queryByRole('link', { name: /^Next:/ })).toBeNull();
+  view.unmount();
+  expect(document.title).not.toContain('LookAt');
+});
+
+test('a project of one page has no page bar', () => {
+  render(<EntryOverlay route={resolvePage(entryPath)} origin={origin} />);
+  expect(screen.queryByRole('navigation')).toBeNull();
+  expect(screen.queryByRole('link', { name: /^Next:/ })).toBeNull();
+  expect(document.title).toBe('8-Directional Chair State Animations | Andre Matthiessen');
+});
+
 test('the preview card grows into the pane, hands over its glass, updates on resize, and cleans up the retreat', () => {
   const fixture = document.createElement('div');
   fixture.className = 'site-layout';
-  fixture.innerHTML = '<header class="site-header"></header><div class="scroll-scene"><button class="work-row"></button><button class="work-row"></button><section class="work-preview" data-entry-id="interactions-8-directional-chair-state-animations"><h3 data-morph-title>Entry</h3></section></div>';
+  fixture.innerHTML = '<header class="site-header"></header><div class="scroll-scene"><button class="work-row"></button><button class="work-row"></button><section class="work-preview" data-project-id="interactions-8-directional-chair-state-animations"><h3 data-morph-title>Entry</h3></section></div>';
   document.body.appendChild(fixture);
   const pane = fixture.querySelector('.work-preview');
   pane.getBoundingClientRect = () => ({ left: 200, top: 200, width: 240, height: 100 });
@@ -118,7 +158,7 @@ test('the preview card grows into the pane, hands over its glass, updates on res
   expect(fixture.querySelector('.site-header').style.getPropertyValue('--entry-retreat')).toBe('1');
   expect(fixture.style.getPropertyValue('--entry-retreat')).toBe('');
   expect(fixture.querySelector('.scroll-scene').getAttribute('style')).toBeNull();
-  expect(fixture.querySelectorAll('.work-row')[1].style.transform).toBe('translateX(-75vw) scale(0.88)');
+  expect(fixture.querySelectorAll('.work-row')[1].style.transform).toBe('translateX(-100vw) scale(0.88)');
   window.innerWidth = 420;
   fireEvent.resize(window);
   expect(dialog.style.width).toBe('400px');

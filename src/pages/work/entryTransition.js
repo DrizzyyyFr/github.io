@@ -35,7 +35,8 @@ function outline(source) {
 // itself, so a frame restyles these few instead of everything under the page's root.
 const RETREATING = '.site-header, .site-footer, .work-tabs, .work-heading';
 
-export function createEntryTransition({ dialog, heading, viewport, back, source, origin, onExited }) {
+// `pages` is the bar of a project's pages, when it has several; it settles under the title.
+export function createEntryTransition({ dialog, heading, pages, viewport, back, source, origin, onExited }) {
   const retreating = [...document.querySelectorAll(RETREATING)];
   const siblings = [...document.querySelectorAll('.work-row')].filter(pane => pane !== source);
   // Writes a style only when its value changes: even an unchanged write costs a style pass.
@@ -85,7 +86,7 @@ export function createEntryTransition({ dialog, heading, viewport, back, source,
     // Each row moves by its own transform, which restyles only that row.
     siblings.forEach((pane, index) => {
       const away = ease(progress, index * .022, .48 + index * .022);
-      set(pane, 'transform', away ? `translateX(${away * -75}vw) scale(${1 - away * .12})` : '');
+      set(pane, 'transform', away ? `translateX(${away * -100}vw) scale(${1 - away * .12})` : '');
     });
     const inset = Math.min(70, Math.max(24, destination.width * .045));
     const font = Math.min(46, Math.max(26, destination.width * .033));
@@ -98,17 +99,24 @@ export function createEntryTransition({ dialog, heading, viewport, back, source,
     set(heading, 'fontSize', `${lerp(sourceFont * labelScale, font, morph)}px`);
     // The note is laid out once at the pane's final width, rather than re-flowing every frame as
     // the pane grows; it stays hidden until the reveal, so its own position is only read then.
+    const innerWidth = `${Math.max(0, destination.width - inset * 2)}px`;
     set(viewport, 'left', `${inset}px`);
-    set(viewport, 'width', `${Math.max(0, destination.width - inset * 2)}px`);
+    set(viewport, 'width', innerWidth);
+    set(pages, 'left', `${inset}px`);
+    set(pages, 'maxWidth', innerWidth);
     if (reveal > 0) {
-      const bodyTop = endTop + heading.offsetHeight + 30;
+      const headingBottom = endTop + heading.offsetHeight;
+      const bodyTop = pages ? headingBottom + 16 + pages.offsetHeight + 18 : headingBottom + 30;
+      set(pages, 'top', `${headingBottom + 16}px`);
       set(viewport, 'top', `${bodyTop}px`);
       set(viewport, 'height', `${Math.max(0, destination.height - bodyTop - inset) * reveal}px`);
     } else set(viewport, 'height', '0px');
     const hidden = reveal < 1;
     const returning = reveal > .8;
+    set(pages, 'opacity', reveal);
     set(viewport, 'overflowY', hidden ? 'hidden' : 'auto');
     if (viewport.inert !== hidden) viewport.inert = hidden;
+    if (pages && pages.inert !== hidden) pages.inert = hidden;
     set(back, 'opacity', returning ? 1 : 0);
     set(back, 'pointerEvents', returning ? 'auto' : 'none');
     if (back.disabled === returning) back.disabled = !returning;

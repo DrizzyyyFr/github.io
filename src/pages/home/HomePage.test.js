@@ -207,7 +207,7 @@ test('a link to a project glides down from sunrise and opens the project once it
   renderScene();
   expect(window.scrollTo).toHaveBeenNthCalledWith(1, { top: 0, behavior: 'instant' });
   // The panel previews the linked project on the way down (still hidden at sunrise); the project itself waits.
-  expect(screen.getByRole('button', { name: /8 Directional Chair State Animations/, hidden: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('button', { name: /8-Directional Chair State Animations/, hidden: true })).toHaveAttribute('aria-pressed', 'true');
   act(() => jest.advanceTimersByTime(3000));
   expect(document.querySelector('dialog')).toBeNull();
   act(() => jest.advanceTimersByTime(1200));

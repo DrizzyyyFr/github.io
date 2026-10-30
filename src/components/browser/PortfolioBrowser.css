@@ -1,5 +1,6 @@
 .portfolio-browser {
-  --row-outline: polygon(0 0, calc(100% - 26px) 0, 100% 50%, calc(100% - 26px) 100%, 0 100%);
+  --row-point: 26px;
+  --row-outline: polygon(0 0, calc(100% - var(--row-point)) 0, 100% 50%, calc(100% - var(--row-point)) 100%, 0 100%);
   --tab-outline: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
   display: grid;
   grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
@@ -81,7 +82,6 @@
 .work-row::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--color-accent); box-shadow: 0 0 18px #8ddff7aa; opacity: 0; transform: scaleY(.4); transition: opacity 420ms var(--ease-soft), transform 560ms var(--ease-soft); }
 .work-row:hover .work-glass-pointer, .work-row:focus-visible .work-glass-pointer { opacity: 1; }
 .work-row:hover .work-glass-rim { opacity: .35; }
-.work-row[aria-pressed='true'] { min-height: clamp(84px, 12.6svh, 132px); }
 .work-row[aria-pressed='true']::before, .work-row[aria-pressed='true']::after,
 .work-row[aria-pressed='true'] .work-glass-rim, .work-row[aria-pressed='true'] .work-glass-lit { opacity: 1; }
 .work-row[aria-pressed='true']::after { transform: none; }
@@ -94,6 +94,39 @@
 .work-row[aria-pressed='true'] .work-row-number { opacity: 1; transform: scale(1.1); }
 .work-row[aria-pressed='true'] .work-row-text { transform: translateX(4px) scale(1.035); }
 .work-row[aria-pressed='true'] .work-row-title { color: #fff; }
+
+/* A topic row unfolds its projects beneath it. Open, its glass is half lit and the reflection
+   crosses it once, while the cyan edge stays with the selected project; its chevron turns
+   from pointing ahead to pointing down at what it opened. */
+.work-row.is-topic { grid-template-columns: clamp(40px, 3.6vw, 60px) minmax(0, 1fr) auto; }
+.work-row-caret { width: 9px; height: 9px; margin-right: 4px; border: solid var(--color-accent); border-width: 0 2px 2px 0; opacity: .55; transform: rotate(-45deg); transition: transform 560ms var(--ease-soft), opacity 420ms var(--ease-soft); }
+.work-row[aria-expanded='true']::before { opacity: .8; }
+.work-row[aria-expanded='true'] .work-glass-rim { opacity: .6; }
+.work-row[aria-expanded='true'] .work-glass-lit { opacity: .5; }
+.work-row[aria-expanded='true'] .work-glass-glint { background-position: -20% 0; }
+.work-row[aria-expanded='true'] .work-row-number, .work-row[aria-expanded='true'] .work-row-caret { opacity: 1; }
+.work-row[aria-expanded='true'] .work-row-caret { transform: translateY(-3px) rotate(45deg); }
+.work-row[aria-expanded='true'] .work-row-title { color: #fff; }
+
+/* An open topic's projects sit under it as plain glass boxes, indented under its number and
+   ending where its point begins, and fold open and shut by their height. Each item's own
+   padding spaces them, so the fold can close to nothing while still leaving room inside the
+   clip for the rows' cast shadows. */
+.work-project-list { --topic-indent: clamp(26px, 2.6vw, 48px); }
+.work-topic-projects { display: grid; grid-template-rows: minmax(0, 1fr); animation: work-fold-open 560ms var(--ease-soft) backwards; transition: grid-template-rows 560ms var(--ease-soft), opacity 360ms ease; }
+.work-topic-projects.is-closing { grid-template-rows: minmax(0, 0fr); opacity: 0; }
+.work-topic-body { min-height: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; }
+.work-topic-projects.is-settled > .work-topic-body { overflow: visible; }
+.work-topic-body > li { padding: clamp(8px, 1.2svh, 12px) var(--row-point) 0 var(--topic-indent); }
+.work-topic-body > li:last-child { padding-bottom: 14px; }
+@keyframes work-fold-open { from { grid-template-rows: minmax(0, 0fr); opacity: 0; } }
+/* A project row sits a size below its topic and has no number of its own. Without a point to
+   clear, its label keeps the same room on both sides. */
+.work-row.is-project { grid-template-columns: minmax(0, 1fr); min-height: clamp(50px, 7.4svh, 80px); padding-inline: clamp(20px, 1.8vw, 32px); }
+.work-row.is-project .work-glass { --outline: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+.work-row.is-project::before { right: 8px; }
+.work-row.is-project[aria-pressed='true'] { min-height: clamp(64px, 9svh, 96px); }
+.work-row.is-project .work-row-title { font-size: clamp(15px, 1.2vw, 20px); font-weight: 500; }
 
 /* The preview card shares the expanded pane's glass and outline, so View grows it in place. */
 .work-preview {
@@ -153,20 +186,25 @@
    The row above already names the project, so the card keeps one title line beside the button. */
 .portfolio-browser.is-stacked { display: flex; flex-direction: column; }
 .is-stacked .work-index { flex: 1 1 auto; }
-.work-inline { display: grid; grid-template-rows: minmax(0, 1fr); animation: work-inline-open 560ms var(--ease-soft) backwards; transition: grid-template-rows 560ms var(--ease-soft), opacity 360ms ease; }
+.work-inline { display: grid; grid-template-rows: minmax(0, 1fr); animation: work-fold-open 560ms var(--ease-soft) backwards; transition: grid-template-rows 560ms var(--ease-soft), opacity 360ms ease; }
 .work-inline.is-closing { grid-template-rows: minmax(0, 0fr); opacity: 0; }
 .work-inline-body { min-height: 0; overflow: hidden; }
-@keyframes work-inline-open { from { grid-template-rows: minmax(0, 0fr); opacity: 0; } }
 .is-stacked .work-preview { margin: 12px 0 4px; }
 .is-stacked .work-preview-stage { max-height: 38svh; }
 .is-stacked .work-preview-title { -webkit-line-clamp: 1; min-height: 0; font-size: clamp(16px, 3.6vw, 24px); }
 .is-stacked .work-open { margin-left: auto; }
+/* Small screens keep the three tabs on one line: only the selected tab has glass behind it, so
+   they need no gap between them. Narrower than about 340px they wrap. */
 @media (max-width: 600px) {
-  .work-tab { padding: 10px 18px; font-size: 14px; }
+  .work-tabs { column-gap: 0; }
+  .work-tab { padding: 10px 13px; font-size: 13px; }
+  .work-project-list { --topic-indent: 18px; }
   .work-row { grid-template-columns: 34px minmax(0, 1fr); column-gap: 12px; min-height: 60px; padding: 10px 40px 10px 18px; }
-  .work-row[aria-pressed='true'] { min-height: 80px; }
+  .work-row.is-topic { grid-template-columns: 34px minmax(0, 1fr) auto; }
+  .work-row.is-project { min-height: 52px; padding-inline: 16px; }
+  .work-row.is-project[aria-pressed='true'] { min-height: 70px; }
   .work-row-number { font-size: 19px; }
-  .work-row-title { font-size: 15px; }
+  .work-row-title, .work-row.is-project .work-row-title { font-size: 15px; }
   .work-preview-title { font-size: 19px; }
   .work-open { padding: 11px 24px; font-size: 13px; }
 }
@@ -174,12 +212,14 @@
 @media (max-height: 500px) {
   .portfolio-browser { min-height: 220px; gap: 18px; }
   .work-index { gap: 10px; }
-  .work-tab { padding: 8px 16px; font-size: 14px; }
-  .work-row { min-height: 46px; padding-block: 7px; }
-  .work-row[aria-pressed='true'] { min-height: 62px; }
+  .work-tabs { column-gap: 0; }
+  .work-tab { padding: 8px 12px; font-size: 13px; }
+  .work-row, .work-row.is-project { min-height: 46px; padding-block: 7px; }
+  .work-row.is-project[aria-pressed='true'] { min-height: 58px; }
   .work-row:not([aria-pressed='true']) .work-row-title { -webkit-line-clamp: 1; }
   .work-row-number { font-size: 17px; }
-  .work-row-title { font-size: 14px; }
+  .work-row-title, .work-row.is-project .work-row-title { font-size: 14px; }
+  .work-topic-body > li { padding-top: 6px; }
   .work-preview { --stage-gap: 10px; padding: 10px; }
   .work-preview-stage:not(.is-empty) { min-height: min(90px, var(--stage-height)); }
   .work-preview-title { -webkit-line-clamp: 1; min-height: 0; font-size: 18px; }

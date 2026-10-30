@@ -1,13 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import portfolio from '../../content/portfolio.json';
+import { projectsOf } from '../../config/navigation';
 import { projectPreview, youtubePreviewUrl } from './projectPreview';
 import useMediaQuery from './useMediaQuery';
 import './PortfolioBrowser.css';
 
-// Every entry of a category in one list.
-const projectsOf = category => category.subcategories.flatMap(subcategory => subcategory.entries.map(entry => ({
-  category, subcategory, entry,
-})));
+// A category's topics, each with the projects its notes form.
+const topicsOf = category => category.subcategories.map(topic => ({ topic, projects: projectsOf(topic) }));
 const navigate = hash => { if (window.location.hash !== hash) window.location.hash = hash; };
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -85,13 +84,25 @@ function useLinger(active) {
   return active || shown;
 }
 
+// True once an opened fold has finished opening, so it can stop clipping what it holds.
+const FOLD_MS = 560;
+function useSettled(open) {
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!open) { setSettled(false); return undefined; }
+    const timer = setTimeout(() => setSettled(true), reducedMotion() ? 0 : FOLD_MS);
+    return () => clearTimeout(timer);
+  }, [open]);
+  return open && settled;
+}
+
 // One card that stays put while its project changes: the media and the title crossfade, the
 // media area folds away for a project without any, and a reflection crosses the glass.
 // Nothing loads until the panel is `active` on screen, and only the shown project's media.
-function ProjectPreview({ project, active, onOpen }) {
+function ProjectPreview({ category, topic, project, active, onOpen }) {
   const card = useRef(null);
-  const { category, subcategory, entry } = project;
-  const media = projectPreview(entry);
+  // A project of several pages previews the first media found across them, in order.
+  const media = projectPreview({ body: project.pages.map(page => page.body).join('\n') });
   const src = media?.src;
   const [readySrc, setReadySrc] = useState(null);
   // Incoming media that cannot be seen yet keeps the outgoing media fully shown. Leaving the
@@ -103,8 +114,8 @@ function ProjectPreview({ project, active, onOpen }) {
     const timer = setTimeout(() => setReadySrc(src), READY_TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [waiting, src]);
-  const layers = useCrossfade(entry.id, media, waiting);
-  const labels = useCrossfade(entry.id, entry.title);
+  const layers = useCrossfade(project.id, media, waiting);
+  const labels = useCrossfade(project.id, project.title);
   // The media area follows the current media's proportions. Until new media reports its own,
   // the area keeps its present shape, then eases to the new one rather than jumping.
   const [ratio, setRatio] = useState(() => mediaRatios.get(src) || MEDIA_RATIO.fallback);
@@ -115,13 +126,14 @@ function ProjectPreview({ project, active, onOpen }) {
     mediaRatios.set(from, shape);
     if (from === src) setRatio(shape);
   };
+  // View opens the project on its first page.
   const open = () => {
     onOpen?.(card.current);
-    navigate(`#/${category.id}/${subcategory.id}/${entry.id}`);
+    navigate(`#/${category.id}/${topic.id}/${project.pages[0].id}`);
   };
-  return <section ref={card} className="work-preview" data-entry-id={entry.id} aria-label={`${entry.title} preview`}>
+  return <section ref={card} className="work-preview" data-project-id={project.id} aria-label={`${project.title} preview`}>
     <span className="work-preview-surface" aria-hidden="true" />
-    <span key={entry.id} className="work-preview-glint" aria-hidden="true" />
+    <span key={project.id} className="work-preview-glint" aria-hidden="true" />
     <div className={`work-preview-stage${media ? '' : ' is-empty'}`} style={{ '--media-ratio': ratio }}>
       <div className={`work-preview-media${media?.kind === 'image' ? ' is-image' : ''}`}>
         {active && layers.filter(layer => layer.value).map(layer => {
@@ -161,21 +173,43 @@ const followPointer = event => {
   event.currentTarget.style.setProperty('--pointer-y', `${event.clientY - box.top}px`);
 };
 
-// One project as a glass row. Selecting it grows the row, lights its glass and sweeps a
-// reflection across it; its text only scales, so nothing re-wraps while it moves.
-function ProjectRow({ project, index, current, stacked, active, onPreview, onOpen }) {
+// One project as a glass row inside its open topic. Selecting it grows the row, lights its
+// glass and sweeps a reflection across it; its text only scales, so nothing re-wraps.
+function ProjectRow({ category, topic, project, current, stacked, active, onPreview, onOpen }) {
   const inline = useLinger(current);
   return <li className={`work-project${current ? ' is-selected' : ''}`}>
-    <button type="button" className="work-row" aria-pressed={current} onClick={() => onPreview(project)} onPointerMove={followPointer}>
+    <button type="button" className="work-row is-project" aria-pressed={current} data-topic={topic.id} data-project={project.id}
+      onClick={() => onPreview(topic, project)} onPointerMove={followPointer}>
       <Glass />
-      <span className="work-row-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-      <span className="work-row-text">
-        <span className="work-row-title">{project.entry.title}</span>
-      </span>
+      <span className="work-row-text"><span className="work-row-title">{project.title}</span></span>
     </button>
     {/* On phones the preview opens under its row, and folds away again when another is chosen. */}
     {stacked && inline && <div className={`work-inline${current ? '' : ' is-closing'}`} inert={current ? undefined : true}>
-      <div className="work-inline-body"><ProjectPreview project={project} active={active} onOpen={onOpen} /></div>
+      <div className="work-inline-body"><ProjectPreview category={category} topic={topic} project={project} active={active} onOpen={onOpen} /></div>
+    </div>}
+  </li>;
+}
+
+// A topic as a glass row that unfolds to reveal its projects. One topic is open at a time; a
+// closing topic folds its projects away before they leave. The fold clips only while it
+// moves, so an open topic's rows keep their shadows and can slide away when a project opens.
+function TopicRow({ category, topic, projects, index, open, selectedId, stacked, active, onOpenTopic, onPreview, onOpen }) {
+  const shown = useLinger(open);
+  const settled = useSettled(open);
+  const fold = open ? (settled ? ' is-settled' : '') : ' is-closing';
+  return <li className={`work-topic${open ? ' is-open' : ''}`}>
+    <button type="button" className="work-row is-topic" aria-expanded={open} aria-controls={`work-topic-${topic.id}`}
+      onClick={() => onOpenTopic(topic, projects)} onPointerMove={followPointer}>
+      <Glass />
+      <span className="work-row-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+      <span className="work-row-text"><span className="work-row-title">{topic.label}</span></span>
+      <span className="work-row-caret" aria-hidden="true" />
+    </button>
+    {shown && <div id={`work-topic-${topic.id}`} className={`work-topic-projects${fold}`} inert={open ? undefined : true}>
+      <ul className="work-topic-body">
+        {projects.map(project => <ProjectRow key={project.id} category={category} topic={topic} project={project} current={open && project.id === selectedId}
+          stacked={stacked} active={active} onPreview={onPreview} onOpen={onOpen} />)}
+      </ul>
     </div>}
   </li>;
 }
@@ -236,25 +270,33 @@ export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, o
   const stacked = useMediaQuery('(max-width: 850px) and (orientation: portrait)');
   const categories = portfolio.categories;
   const category = categories.find(item => item.id === categoryId) || categories[0];
-  const projects = projectsOf(category);
-  const [previewed, setPreviewed] = useState({});
-  const routed = projects.find(project => project.entry.id === entryId);
-  const routedId = routed?.entry.id;
+  const topics = topicsOf(category);
+  // The open topic and the previewed project are remembered per category.
+  const [chosen, setChosen] = useState({});
+  const routedTopic = topics.find(({ projects }) => projects.some(project => project.pages.some(page => page.id === entryId)));
+  const routedProject = routedTopic?.projects.find(project => project.pages.some(page => page.id === entryId));
+  const routed = routedTopic && { topic: routedTopic.topic.id, project: routedProject.id };
   useEffect(() => {
-    if (routedId) setPreviewed(previous => previous[category.id] === routedId ? previous : { ...previous, [category.id]: routedId });
-  }, [routedId, category.id]);
-  const selected = routed
-    || projects.find(project => project.entry.id === previewed[category.id])
-    || projects.find(project => project.subcategory.id === subcategoryId)
-    || projects[0];
-  useMoreBelow(list, `${category.id}/${stacked}/${selected.entry.id}`);
+    if (!routed) return;
+    setChosen(previous => previous[category.id]?.project === routed.project ? previous : { ...previous, [category.id]: routed });
+    // The routed pair changes only with the routed project.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routed?.project, category.id]);
+  const remembered = chosen[category.id];
+  const open = routedTopic
+    || topics.find(({ topic }) => topic.id === remembered?.topic)
+    || topics.find(({ topic }) => topic.id === subcategoryId)
+    || topics[0];
+  const selected = routedProject || open.projects.find(project => project.id === remembered?.project) || open.projects[0];
+  useMoreBelow(list, `${category.id}/${stacked}/${open.topic.id}/${selected.id}`);
 
-  // A stacked row opens downwards, so once it has opened, bring all of it into the list's view.
+  // A chosen project can open below the list's view, under a topic unfolding near the bottom or,
+  // on phones, with its preview opening under it. Once it has opened, bring all of it into view.
   // Only the list scrolls: moving the page would move the ocean scene.
-  const chosen = useRef(false);
+  const picked = useRef(false);
   useEffect(() => {
-    if (!stacked || !chosen.current) return undefined;
-    chosen.current = false;
+    if (!picked.current) return undefined;
+    picked.current = false;
     const timer = setTimeout(() => {
       const box = list.current;
       const item = box?.querySelector('.work-project.is-selected');
@@ -265,13 +307,15 @@ export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, o
       if (offset) box.scrollBy?.({ top: offset, behavior: 'smooth' });
     }, reducedMotion() ? 0 : FADE_MS + 40);
     return () => clearTimeout(timer);
-  }, [stacked, selected.entry.id]);
+  }, [selected.id]);
 
-  const preview = project => {
-    if (project.entry.id === selected.entry.id) return;
-    chosen.current = true;
-    setPreviewed(previous => ({ ...previous, [category.id]: project.entry.id }));
+  const choose = (topic, project) => {
+    if (topic.id === open.topic.id && project.id === selected.id) return;
+    picked.current = true;
+    setChosen(previous => ({ ...previous, [category.id]: { topic: topic.id, project: project.id } }));
   };
+  // Opening a topic previews its first project; an open topic stays as it is.
+  const openTopic = (topic, projects) => { if (topic.id !== open.topic.id) choose(topic, projects[0]); };
   const chooseCategory = index => navigate(`#/${categories[index].id}`);
   const tabKeys = event => {
     const index = categories.indexOf(category);
@@ -282,15 +326,20 @@ export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, o
     chooseCategory(wrapped);
     event.currentTarget.querySelectorAll('[role="tab"]')[wrapped]?.focus();
   };
+  // Arrows move through every visible row; landing on a project previews it, while a topic
+  // waits for Enter or a click, so the list does not unfold under the keys.
   const rowKeys = event => {
-    const rows = [...list.current.querySelectorAll('.work-row')];
+    const rows = [...list.current.querySelectorAll('.work-row')].filter(row => !row.closest('[inert]'));
     const index = rows.indexOf(document.activeElement);
     const next = { ArrowDown: index + 1, ArrowUp: index - 1, Home: 0, End: rows.length - 1 }[event.key];
     if (index < 0 || next === undefined) return;
     event.preventDefault();
-    const target = Math.max(0, Math.min(rows.length - 1, next));
-    preview(projects[target]);
-    rows[target].focus();
+    const target = rows[Math.max(0, Math.min(rows.length - 1, next))];
+    target.focus();
+    if (target.dataset.project) {
+      const group = topics.find(({ topic }) => topic.id === target.dataset.topic);
+      choose(group.topic, group.projects.find(project => project.id === target.dataset.project));
+    }
   };
 
   return <div className={`portfolio-browser${stacked ? ' is-stacked' : ''}`}>
@@ -304,14 +353,15 @@ export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, o
       <div ref={list} id="work-projects" className="work-projects" role="tabpanel" aria-labelledby={`work-tab-${category.id}`}>
         <Handover id={category.id} className="work-list-handover">
           <ul className="work-project-list" onKeyDown={rowKeys}>
-            {projects.map((project, index) => <ProjectRow key={project.entry.id} project={project} index={index} current={project === selected}
-              stacked={stacked} active={active} onPreview={preview} onOpen={onOpen} />)}
+            {topics.map(({ topic, projects }, index) => <TopicRow key={topic.id} category={category} topic={topic} projects={projects} index={index}
+              open={topic.id === open.topic.id} selectedId={selected.id} stacked={stacked} active={active}
+              onOpenTopic={openTopic} onPreview={choose} onOpen={onOpen} />)}
           </ul>
         </Handover>
       </div>
     </div>
     {!stacked && <Handover id={category.id} className="work-preview-handover">
-      <ProjectPreview project={selected} active={active} onOpen={onOpen} />
+      <ProjectPreview category={category} topic={open.topic} project={selected} active={active} onOpen={onOpen} />
     </Handover>}
   </div>;
 }
