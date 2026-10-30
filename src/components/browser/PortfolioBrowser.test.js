@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import PortfolioBrowser from './PortfolioBrowser';
+import { projectPreview } from './projectPreview';
 import { navigation } from '../../config/navigation';
 
 const stacked = '(max-width: 850px) and (orientation: portrait)';
@@ -8,6 +9,8 @@ const row = name => screen.getByRole('button', { name: new RegExp(name) });
 
 // A category change hands over: the old list leaves for 160ms before the new one arrives.
 const handOver = () => act(() => jest.advanceTimersByTime(180));
+// A project change crossfades: the outgoing media and title stay for 520ms before they are dropped.
+const fadeOut = () => act(() => jest.advanceTimersByTime(600));
 
 beforeEach(() => {
   jest.useFakeTimers();
@@ -34,7 +37,7 @@ test('the two categories are tabs and every project of the selected one is liste
   expect(screen.getByRole('tab', { name: 'Technical Animation' })).toHaveAttribute('aria-selected', 'true');
 });
 
-test('clicking a row previews it in place, and View project opens that exact entry from the card', () => {
+test('clicking a row previews it in place, and View opens that exact entry from the card', () => {
   const open = jest.fn();
   render(<PortfolioBrowser categoryId="animation" onOpen={open} />);
   fireEvent.click(row('Vehicular Interaction Animations'));
@@ -44,7 +47,7 @@ test('clicking a row previews it in place, and View project opens that exact ent
   const card = screen.getByRole('region', { name: 'Vehicular Interaction Animations preview' });
   expect(card).toHaveAttribute('data-entry-id', 'interactions-vehicular-interaction-animations');
   expect(screen.queryByText(/preview(ing)?$/i)).not.toBeInTheDocument();
-  fireEvent.click(within(card).getByRole('button', { name: /View project/ }));
+  fireEvent.click(within(card).getByRole('button', { name: 'View' }));
   expect(open).toHaveBeenCalledWith(card);
   expect(window.location.hash).toBe('#/animation/interactions/interactions-vehicular-interaction-animations');
 });
@@ -60,22 +63,76 @@ test('the preview loops a muted video, shows an image, or shows no media and no 
   handOver();
   expect(document.querySelector('.work-preview video').getAttribute('src')).toContain('2026-03-01-18-18-26');
   view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="procedural-systems-lookat-documentation-simple-state-machine" />);
-  handOver();
+  fadeOut();
   expect(within(screen.getByRole('region', { name: /preview/ })).getByRole('img', { name: 'Pasted image 20260301171057' })).toBeInTheDocument();
   view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="download" />);
-  handOver();
+  fadeOut();
   const card = screen.getByRole('region', { name: 'Download preview' });
-  expect(card.querySelector('.work-preview-media')).toBeNull();
+  expect(card.querySelector('.work-preview-stage')).toHaveClass('is-empty');
+  expect(card.querySelector('.work-preview-layer')).toBeNull();
   expect(card).not.toHaveTextContent('Procedural Animation Toolkit');
-  expect(within(card).getByRole('button', { name: /View project/ })).toBeInTheDocument();
+  expect(within(card).getByRole('button', { name: 'View' })).toBeInTheDocument();
+});
+
+test('the media area takes the shape of the media it shows, and remembers it', () => {
+  const view = render(<PortfolioBrowser categoryId="technical-animation" entryId="automation-phase-and-footstep-s-1-foot-2-foot-bang-there-sound-there-lets-automate" />);
+  const stage = () => document.querySelector('.work-preview-stage');
+  const strip = screen.getByRole('img', { name: 'Screenshot 2026-02-19 215431' });
+  expect(stage().style.getPropertyValue('--media-ratio')).toBe(String(16 / 9));
+  Object.defineProperty(strip, 'naturalWidth', { value: 1187 });
+  Object.defineProperty(strip, 'naturalHeight', { value: 98 });
+  fireEvent.load(strip);
+  expect(parseFloat(stage().style.getPropertyValue('--media-ratio'))).toBeCloseTo(1187 / 98);
+  view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="procedural-systems-lookat-documentation-simple-state-machine" />);
+  fadeOut();
+  // Until the new image reports its size, the area keeps its present shape instead of snapping.
+  expect(parseFloat(stage().style.getPropertyValue('--media-ratio'))).toBeCloseTo(1187 / 98);
+  view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="automation-phase-and-footstep-s-1-foot-2-foot-bang-there-sound-there-lets-automate" />);
+  fadeOut();
+  expect(parseFloat(stage().style.getPropertyValue('--media-ratio'))).toBeCloseTo(1187 / 98);
+});
+
+test('switching projects crossfades the card instead of cutting to the next one', () => {
+  render(<PortfolioBrowser categoryId="animation" />);
+  const card = screen.getByRole('region', { name: '8 Directional Chair State Animations preview' });
+  fireEvent.click(row('Vehicular Interaction Animations'));
+  // The same card stays on screen, holding the outgoing media and title while the new ones arrive.
+  expect(screen.getByRole('region', { name: 'Vehicular Interaction Animations preview' })).toBe(card);
+  expect(card.querySelectorAll('.work-preview-layer')).toHaveLength(2);
+  expect(card.querySelector('.work-preview-layer.is-leaving video').getAttribute('src')).toContain('chair-inengine');
+  expect(card.querySelector('.work-preview-label.is-leaving')).toHaveTextContent('8 Directional Chair State Animations');
+  expect(card.querySelector('.work-preview-label.is-leaving')).toHaveAttribute('aria-hidden', 'true');
+  expect(card.querySelector('[data-morph-title]')).toHaveTextContent('Vehicular Interaction Animations');
+  fadeOut();
+  expect(card.querySelectorAll('.work-preview-layer')).toHaveLength(1);
+  expect(card.querySelectorAll('.work-preview-label')).toHaveLength(1);
+  expect(card.querySelector('.work-preview-layer video').getAttribute('src')).toContain('2026-03-16-20-34-39');
 });
 
 test('reduced motion keeps the preview video still', () => {
   window.matchMedia = query => ({ matches: query === '(prefers-reduced-motion: reduce)' });
-  render(<PortfolioBrowser categoryId="animation" />);
+  const view = render(<PortfolioBrowser categoryId="animation" />);
   const video = document.querySelector('.work-preview video');
   expect(video).not.toHaveAttribute('autoplay');
   expect(video).toHaveAttribute('preload', 'metadata');
+  view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="physical-systems-physia-framework-to-solve-procedural-active-ragdolls" />);
+  handOver();
+  expect(document.querySelector('.work-preview iframe').getAttribute('src')).toContain('autoplay=0');
+});
+
+test('a YouTube video in a note previews as a muted, looping autoplay that takes no input', () => {
+  render(<PortfolioBrowser categoryId="technical-animation" entryId="physical-systems-physia-framework-to-solve-procedural-active-ragdolls" />);
+  const player = document.querySelector('.work-preview iframe');
+  const url = new URL(player.getAttribute('src'));
+  expect(url.origin + url.pathname).toBe('https://www.youtube-nocookie.com/embed/vGiD6DGbWx0');
+  expect(Object.fromEntries(url.searchParams)).toMatchObject({ autoplay: '1', mute: '1', loop: '1', playlist: 'vGiD6DGbWx0', controls: '0' });
+  expect(player).toHaveAttribute('tabindex', '-1');
+  expect(player).toHaveAttribute('aria-hidden', 'true');
+  expect(player.getAttribute('allow')).toContain('autoplay');
+  expect(document.querySelector('.work-preview-stage')).not.toHaveClass('is-empty');
+  // A local video still wins over YouTube, and YouTube over an image.
+  expect(projectPreview({ body: '![[Chair_InEngine.mp4]]\n<iframe src="https://www.youtube.com/embed/YPJ0_ISq-yg"></iframe>' }).kind).toBe('video');
+  expect(projectPreview({ body: '![[Pasted image 20260301171057.png]]\nhttps://youtu.be/YPJ0_ISq-yg' }).kind).toBe('youtube');
 });
 
 test('a routed entry is previewed, kept after the route returns to its topic, and remembered per category', () => {
@@ -118,6 +175,11 @@ test('portrait phones open the selected row in place with its preview', () => {
   fireEvent.click(row('Vehicular Interaction Animations'));
   const second = row('Vehicular Interaction Animations').closest('li');
   expect(within(second).getByRole('region', { name: 'Vehicular Interaction Animations preview' })).toBeInTheDocument();
+  // The previous row's preview folds away before it is removed.
+  expect(first.querySelector('.work-inline')).toHaveClass('is-closing');
+  expect(first.querySelector('.work-inline')).toHaveAttribute('inert');
+  fadeOut();
+  expect(first.querySelector('.work-inline')).toBeNull();
   expect(screen.getAllByRole('region')).toHaveLength(1);
   expect(document.querySelector('.portfolio-browser')).toHaveClass('is-stacked');
 });

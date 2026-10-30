@@ -20,7 +20,8 @@
   --water-dusk: linear-gradient(180deg, #996e83 0%, #62506d 24%, #343b5b 65%, #132c47 100%);
   --shard-outline: polygon(0% 18%, 6% 0%, 94% 3%, 100% 80%, 96% 100%, 2% 94%);
   --glass-fill: linear-gradient(124deg, #325d7e 0%, #254b70 38%, #254260 68%, #625b70 100%);
-  --glass-edge: linear-gradient(135deg, #a5e8f8b3, #9ce9ff22 40%, #e9bf9c77 70%, #7ed6f3aa);
+  /* The glass rim catches the scene's sun at the top right and fades to a faint cool line in shade. */
+  --glass-edge: linear-gradient(to bottom left, #ffe0b4bf, #ffe0b42e 36%, #8ddff71f 70%, #8ddff714);
   --glass-white: #ffffff;
   --glass-gold: #ffe0b4;
   --glass-sky: #d5edff;

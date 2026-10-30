@@ -96,24 +96,57 @@
 .work-row-title { font-size: clamp(16px, 1.4vw, 23px); font-weight: 600; letter-spacing: -.015em; line-height: 1.25; color: #e6f0f6; color: color-mix(in srgb, #cfdfea, #ffffff calc(var(--glass-lit) * 100%)); text-shadow: 0 1px 10px #061524b3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .work-row-path { font-size: clamp(12px, .9vw, 15px); color: var(--color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* The preview card shares the expanded pane's glass and outline, so View project grows it in place. */
+/* The preview card shares the expanded pane's glass and outline, so View grows it in place. */
 .work-preview {
   --shard-outline: polygon(0% 2.5%, 1.8% 0%, 97.5% 0%, 100% 3.5%, 98.2% 100%, 1% 98.5%);
+  --stage-gap: clamp(12px, 1.8svh, 22px);
+  container-type: inline-size;
   position: relative; isolation: isolate; flex: 0 1 auto;
-  display: flex; flex-direction: column; gap: clamp(12px, 1.8svh, 22px);
+  display: flex; flex-direction: column;
   min-width: 0; min-height: 0;
   padding: clamp(12px, 1.3vw, 22px);
 }
 .work-preview-surface { position: absolute; inset: 0; z-index: -1; clip-path: var(--shard-outline); background: var(--glass-edge); }
 .work-preview-surface::before { content: ''; position: absolute; inset: 1px; clip-path: var(--shard-outline); background: var(--glass-fill); }
-.work-preview-media { position: relative; flex: 0 1 auto; aspect-ratio: 16 / 9; min-height: 120px; overflow: hidden; background: var(--color-recess); border: 1px solid var(--color-border); animation: work-media-in 420ms ease both; }
-@keyframes work-media-in { from { opacity: 0; } to { opacity: 1; } }
+/* Each change of project sends one reflection across the card's glass. */
+.work-preview-glint {
+  position: absolute; inset: 1px; z-index: 2; pointer-events: none; clip-path: var(--shard-outline);
+  background: linear-gradient(105deg, transparent 42%, rgb(255 241 220 / .16) 50%, rgb(255 241 220 / .04) 53%, transparent 60%) no-repeat;
+  background-size: 250% 100%;
+  animation: work-preview-sweep 1100ms var(--ease-glide) both;
+}
+@keyframes work-preview-sweep { from { background-position: 120% 0; } to { background-position: -20% 0; } }
+/* The media area spans the card at the media's own proportions (--media-ratio, measured as
+   it loads), easing between shapes, so a wide strip makes a slim card. It folds away for a
+   project with nothing to show, and in a short column it may shrink to fit. */
+.work-preview-stage {
+  --stage-height: max(48px, calc(100cqw / var(--media-ratio, 1.7778)));
+  flex: 0 1 auto; height: var(--stage-height); min-height: min(120px, var(--stage-height)); margin-bottom: var(--stage-gap);
+  transition: height 560ms var(--ease-glide), min-height 560ms var(--ease-glide), margin-bottom 560ms var(--ease-glide), opacity 400ms ease;
+}
+.work-preview-stage.is-empty { height: 0; min-height: 0; margin-bottom: 0; opacity: 0; }
+/* Media sits on the glass with no frame of its own, lifted by a soft shadow. Video fills its
+   area, so the area casts the shadow; an image that has to fit a shorter area casts its own,
+   rather than sitting in a dark box with bars beside it. */
+.work-preview-media { position: relative; width: 100%; height: 100%; overflow: hidden; box-shadow: 0 10px 22px rgb(4 16 28 / .42); transition: box-shadow 400ms ease; }
+.work-preview-media.is-image { overflow: visible; box-shadow: none; }
+.work-preview-image { filter: drop-shadow(0 8px 18px rgb(4 16 28 / .45)); }
+/* The incoming media settles in over the outgoing one, which fades away beneath it. */
+.work-preview-layer { position: absolute; inset: 0; animation: work-layer-in 520ms var(--ease-glide) backwards; transition: opacity 520ms ease, transform 520ms var(--ease-glide); }
+.work-preview-layer.is-leaving { opacity: 0; transform: scale(1.015); }
+@keyframes work-layer-in { from { opacity: 0; transform: scale(1.04); } }
 .work-preview-video, .work-preview-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .work-preview-video { object-fit: cover; }
+.work-preview-youtube { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
 .work-preview-image { object-fit: contain; }
 .work-preview-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; padding: 0 clamp(6px, .8vw, 14px) clamp(2px, .4svh, 6px); }
-.work-preview-heading { min-width: 0; }
-.work-preview-title { margin: 0; font-size: clamp(20px, 2.1vw, 40px); font-weight: 500; letter-spacing: -.035em; line-height: 1.2; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* The outgoing title lifts away as the incoming one rises into the same place. The title keeps
+   room for two lines, so a shorter or longer one never moves the card's edge. */
+.work-preview-heading { display: grid; min-width: 0; }
+.work-preview-label { grid-area: 1 / 1; min-width: 0; animation: work-label-in 520ms var(--ease-glide) backwards; transition: opacity 260ms ease, transform 420ms var(--ease-glide); }
+.work-preview-label.is-leaving { opacity: 0; transform: translateY(-10px); pointer-events: none; }
+@keyframes work-label-in { from { opacity: 0; transform: translateY(12px); } }
+.work-preview-title { margin: 0; min-height: 2.4em; font-size: clamp(20px, 2.1vw, 40px); font-weight: 500; letter-spacing: -.035em; line-height: 1.2; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .work-preview-path { margin: 4px 0 0; font-size: clamp(12px, .95vw, 16px); color: var(--color-muted); }
 .work-preview.is-entry-source [data-morph-title] { visibility: hidden; }
 .work-open { position: relative; isolation: isolate; flex: none; display: inline-flex; align-items: center; gap: 12px; border: 0; background: none; color: var(--color-text); padding: clamp(12px, 1.6svh, 18px) clamp(24px, 2vw, 38px); font-size: clamp(13px, 1vw, 17px); font-weight: 500; }
@@ -128,10 +161,14 @@
    The row above already names the project, so the card keeps one title line beside the button. */
 .portfolio-browser.is-stacked { display: flex; flex-direction: column; }
 .is-stacked .work-index { flex: 1 1 auto; }
+.work-inline { display: grid; grid-template-rows: minmax(0, 1fr); animation: work-inline-open 560ms var(--ease-glide) backwards; transition: grid-template-rows 560ms var(--ease-glide), opacity 360ms ease; }
+.work-inline.is-closing { grid-template-rows: minmax(0, 0fr); opacity: 0; }
+.work-inline-body { min-height: 0; overflow: hidden; }
+@keyframes work-inline-open { from { grid-template-rows: minmax(0, 0fr); opacity: 0; } }
 .is-stacked .work-preview { margin: 12px 0 4px; }
-.is-stacked .work-preview-media { flex: none; max-height: 38svh; }
+.is-stacked .work-preview-stage { max-height: 38svh; }
 .is-stacked .work-preview-path { display: none; }
-.is-stacked .work-preview-title { -webkit-line-clamp: 1; font-size: clamp(16px, 3.6vw, 24px); }
+.is-stacked .work-preview-title { -webkit-line-clamp: 1; min-height: 0; font-size: clamp(16px, 3.6vw, 24px); }
 .is-stacked .work-open { margin-left: auto; }
 @media (max-width: 600px) {
   .work-tab { padding: 10px 18px; font-size: 14px; }
@@ -153,9 +190,9 @@
   .work-row:not([aria-pressed='true']) .work-row-title { -webkit-line-clamp: 1; }
   .work-row-number { font-size: 17px; }
   .work-row-title { font-size: 14px; }
-  .work-preview { gap: 10px; padding: 10px; }
-  .work-preview-media { min-height: 90px; }
+  .work-preview { --stage-gap: 10px; padding: 10px; }
+  .work-preview-stage:not(.is-empty) { min-height: min(90px, var(--stage-height)); }
   .work-preview-path { display: none; }
-  .work-preview-title { -webkit-line-clamp: 1; font-size: 18px; }
+  .work-preview-title { -webkit-line-clamp: 1; min-height: 0; font-size: 18px; }
   .work-open { padding: 10px 22px; font-size: 13px; }
 }

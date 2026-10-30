@@ -21,10 +21,10 @@ Keep the existing personal introduction. The only main categories are Animation 
 1. The Work panel opens on the Animation tab; there is no All work tab. The two tabs switch category and route to `#/category`.
 2. A category lists every one of its entries as a numbered row with its `Category / Topic` path. The routed entry, the category's remembered row, or the routed topic's first entry is previewed, in that order, else the first row.
 3. Clicking, tapping, or arrowing to a row previews it without changing the route. Hovering only lights a row and never moves the selection, so rows do not grow or shrink under a moving pointer.
-4. View project expands the preview card into the reading surface with the original content inside, routing to `#/category/topic/entry`.
+4. View expands the preview card into the reading surface with the original content inside, routing to `#/category/topic/entry`.
 5. Back, Escape, and browser back return to the panel. The browser remains mounted, preserving the previewed row and list scroll.
 
-The preview shows an entry's first video as a muted loop, otherwise its first image, otherwise no media at all; it never shows note text. Left and right arrows move between tabs; up and down arrows move between rows, which are toggle buttons whose pressed state marks the preview. The list scrolls inside its column, fades its lower edge only while rows remain below, and hands scrolling back to the page at its end.
+The preview shows an entry's first video as a muted loop, otherwise a YouTube video its note embeds or links (the youtube-nocookie player, muted, looping, chromeless, taking no pointer or focus), otherwise its first image, otherwise no media at all; it never shows note text. The media area spans the card at the media's own proportions, measured as it loads and remembered, and eases between shapes, so a wide strip makes a slim card; YouTube is 16:9. Media sits on the glass with no frame, lifted by a soft shadow, and an image that must fit a shorter area casts its own shadow instead of sitting between bars. Left and right arrows move between tabs; up and down arrows move between rows, which are toggle buttons whose pressed state marks the preview. The list scrolls inside its column, fades its lower edge only while rows remain below, and hands scrolling back to the page at its end.
 
 ## Material and palette
 
@@ -39,7 +39,7 @@ Edit shared interface values in `src/styles/tokens.css` and environmental lighti
 | `--color-accent` | `#8ddff7`, cyan interaction cues |
 | `--color-sunrise-accent` | `#f3b591`, warm highlights |
 | `--glass-fill` | Blue-to-muted-peach material gradient |
-| `--glass-edge` | Fine cyan/warm edge highlights |
+| `--glass-edge` | Sunlit rim: warm toward the top-right sun, a faint cool line in shade |
 | `--shard-outline` | Shared six-point cut-glass silhouette |
 
 The geometry takes its cue from the fractured-glass UI Lab reference, adapted to clear text and direct interaction. Project rows are numbered glass panes with a pointed right edge; the tab highlight is a glass parallelogram. Both share one CSS glass (`.work-glass`), lit by the scene's sun at the top right: the 1px rim is warm where it faces the sun and cool in shade, light pools in the top-right corner, the bottom left falls into shade, each pane casts a soft shadow down and to the left, faint diagonal facets mark the glass, and a mouse carries a small sun highlight across it. The selected row is the lit `--glass-fill` pane with a cyan edge. Every painted glass layer carries its own clip-path: a layer that relies on its parent's clip can render as its full rectangle.
@@ -48,15 +48,17 @@ The geometry takes its cue from the fractured-glass UI Lab reference, adapted to
 
 - Native scroll progress drives the shared scene timeline with a brief smoothing response. The name enters and exits to the left; the introduction remains readable during the high-sun hold. Reveal navigation only after the descent begins. Do not trap the page in timed slides or intercept page wheel gestures.
 - A fresh visit with no route glides from sunrise down to the introduction over 4s with ease-in-out. Any wheel, touch, key, press, or navigation stops it at once; a link to a section or project opens on its own pose without gliding; reduced motion goes straight to the introduction.
+- The first time a visit goes under the water (the rising waterline crosses mid-screen, `submerge` 0.5), `public/audio/under-the-water.mp3` plays once at 70% volume. A page that opens already underwater stays silent until it dives again. Browsers refuse sound until a click, tap, or key press, and scrolling does not count, so a refused greeting plays at the first such interaction while the view is still underwater.
 - Selecting a row grows it taller and slightly wider over 560ms, lights its glass over 420ms, raises the cyan edge, and sweeps a reflection across it over 1.2s. Its number and text only scale, so nothing re-wraps while it moves. Selection, hover, and the sweep transition registered custom properties that every glass layer inherits. The tab highlight glides to a newly chosen tab over 560ms.
 - Switching category lets the old list and card leave over 160ms, then unfolds the new ones from the left over 720ms; a new preview fades its media in over 420ms.
+- Changing project keeps one preview card: the incoming media settles in over the outgoing one, which fades beneath it (520ms); the outgoing title lifts away as the incoming one rises into its place; the media area folds away for a project without media; the title keeps room for two lines so the card edge never jumps; and a reflection crosses the card. On phones the inline preview opens under its row and folds away when another row is chosen.
 - Follow `G:\GanglifeBevy\game\src\ui_lab\shards\transition.rs`: one reversible 720ms timeline. Between progress .12 and .84, interpolate the preview card's actual bounds and six-point outline toward the expanded frame. Reposition its title independently; never scale a whole prelaid-out page.
 - Over progress 0 to .3 the card fades out while the pane's glass fades in over it. Project rows retreat left and shrink with staggered smoothstep timing; the tabs, heading, header, and footer fade. The card's title stays hidden until return. Reveal the content by clipping its height only during progress .77 to 1. Show the return control near the end; Escape remains available throughout. Closing reverses the same timeline, including mid-transition interruptions.
 - Reduced-motion preferences disable the animated morph, decorative movement, and transitions. Keep all navigation and content usable.
 
 ## Responsive layout and accessibility
 
-Wide and landscape screens place the tabs and project list beside the preview card, using the available width up to 2200px. Portrait screens at or below 850px wide use one column: the selected row opens in place to show its preview and View project, and the list scrolls that row fully into view without moving the page. Every layout keeps bottom clearance for the fixed music player.
+Wide and landscape screens place the tabs and project list beside the preview card, using the available width up to 2200px. Portrait screens at or below 850px wide use one column: the selected row opens in place to show its preview and View, and the list scrolls that row fully into view without moving the page. Every layout keeps bottom clearance for the fixed music player.
 
 Compact-height screens keep the four-stage sticky scene, use smaller navigation spacing, and let the work area scroll rather than shrink the panel below 300px (220px at 500px tall or less). At 500px tall or less the header slims and the fixed footer line is hidden, since it could only sit on content. Size the two name lines against both viewport width and height. The expanded pane fits within the dynamic viewport, with its own content scroll area. Larger screens receive a broader reading surface.
 

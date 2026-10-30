@@ -10,6 +10,8 @@ beforeEach(() => {
   window.history.replaceState(null, '', '/');
   window.matchMedia = () => ({ matches: false });
   window.scrollTo = jest.fn();
+  jest.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+  jest.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   Object.defineProperty(window, 'scrollY', { configurable: true, value: 0, writable: true });
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000, writable: true });
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
@@ -146,7 +148,7 @@ test('the full click path opens content without replacing the underwater scene, 
   fireEvent.click(screen.getByRole('tab', { name: 'Animation' }));
   fireEvent(window, new Event('hashchange'));
   fireEvent.click(screen.getByRole('button', { name: /Vehicular Interaction Animations/ }));
-  fireEvent.click(screen.getByRole('button', { name: /View project/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'View' }));
   fireEvent(window, new Event('hashchange'));
   expect(screen.getByRole('dialog')).toBeInTheDocument();
   expect(document.querySelector('.scroll-scene')).toBe(scene);
@@ -159,6 +161,43 @@ test('the full click path opens content without replacing the underwater scene, 
   expect(document.querySelector('.scroll-scene')).toBe(scene);
   expect(scene).toHaveAttribute('data-phase', 'underwater');
   expect(screen.getByRole('button', { name: /Vehicular Interaction Animations/ })).toHaveAttribute('aria-pressed', 'true');
+});
+
+const greetings = () => HTMLMediaElement.prototype.play.mock.instances.filter(audio => audio.src.endsWith('/audio/under-the-water.mp3')).length;
+
+test('going under the water plays the greeting once a visit', () => {
+  const { scroll } = renderScene();
+  scroll(2 / 3);
+  expect(greetings()).toBe(0);
+  scroll(.8);
+  expect(greetings()).toBe(0);
+  scroll(1);
+  expect(greetings()).toBe(1);
+  scroll(1 / 3);
+  scroll(1);
+  expect(greetings()).toBe(1);
+});
+
+test('a greeting the browser refuses plays at the first click while still under the water', async () => {
+  HTMLMediaElement.prototype.play.mockRejectedValueOnce(new Error('NotAllowedError'));
+  const { scroll } = renderScene();
+  scroll(1);
+  await act(async () => {});
+  expect(greetings()).toBe(1);
+  fireEvent.pointerDown(document.body);
+  expect(greetings()).toBe(2);
+  fireEvent.pointerDown(document.body);
+  expect(greetings()).toBe(2);
+});
+
+test('a visit that opens under the water stays silent until it dives again', () => {
+  window.history.replaceState(null, '', '#work');
+  const { scroll } = renderScene();
+  scroll(1);
+  expect(greetings()).toBe(0);
+  scroll(2 / 3);
+  scroll(1);
+  expect(greetings()).toBe(1);
 });
 
 const lastScrollTop = () => window.scrollTo.mock.calls.at(-1)?.[0].top;

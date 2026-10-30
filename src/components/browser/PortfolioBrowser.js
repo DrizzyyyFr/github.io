@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import portfolio from '../../content/portfolio.json';
-import { projectPreview } from './projectPreview';
+import { projectPreview, youtubePreviewUrl } from './projectPreview';
 import useMediaQuery from './useMediaQuery';
 import './PortfolioBrowser.css';
 
@@ -27,30 +27,96 @@ function Handover({ id, className, children }) {
   </div>;
 }
 
-function PreviewMedia({ media }) {
+// Each preview reports its media's natural proportions once they are known, so the card can
+// take the media's shape. They are remembered, so a revisited project opens at its shape.
+const mediaRatios = new Map();
+const MEDIA_RATIO = { fallback: 16 / 9, min: .6, max: 14 };
+
+function PreviewMedia({ media, onRatio }) {
   const still = useMediaQuery('(prefers-reduced-motion: reduce)');
+  // The YouTube player cannot report its video's size across origins; its videos are 16:9.
+  const youtube = media.kind === 'youtube';
+  useEffect(() => { if (youtube) onRatio(16 / 9); }, [youtube, onRatio]);
+  // The preview is a silent backdrop: it takes no pointer or focus, so the card stays the control.
+  if (youtube) return <iframe className="work-preview-youtube" src={youtubePreviewUrl(media.id, !still)} title="Project video preview"
+    allow="autoplay; encrypted-media; picture-in-picture" tabIndex={-1} aria-hidden="true" />;
   if (media.kind === 'video') return <video className="work-preview-video" src={media.src} muted loop playsInline autoPlay={!still}
-    preload={still ? 'metadata' : 'auto'} aria-hidden="true" tabIndex={-1} />;
-  return <img className="work-preview-image" src={media.src} alt={media.alt} />;
+    preload={still ? 'metadata' : 'auto'} aria-hidden="true" tabIndex={-1}
+    onLoadedMetadata={event => onRatio(event.currentTarget.videoWidth / event.currentTarget.videoHeight)} />;
+  return <img className="work-preview-image" src={media.src} alt={media.alt}
+    onLoad={event => onRatio(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight)} />;
 }
 
+// Keeps outgoing values on screen while the incoming one arrives, so a swap crossfades
+// instead of cutting. The current value comes last; older ones are marked leaving and
+// dropped once their fade has had time to finish.
+const FADE_MS = 520;
+function useCrossfade(key, value) {
+  const serial = useRef(1);
+  const [items, setItems] = useState(() => [{ id: 1, key, value, leaving: false }]);
+  useEffect(() => {
+    setItems(previous => previous[previous.length - 1].key === key ? previous
+      : [...previous.map(item => ({ ...item, leaving: true })), { id: ++serial.current, key, value, leaving: false }]);
+    const timer = setTimeout(() => setItems(previous => previous.filter(item => !item.leaving)), reducedMotion() ? 0 : FADE_MS);
+    return () => clearTimeout(timer);
+    // A new value only ever arrives with a new key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return items;
+}
+
+// True while active and for a moment after, so a closing element can animate away first.
+function useLinger(active) {
+  const [shown, setShown] = useState(active);
+  useEffect(() => {
+    if (active) { setShown(true); return undefined; }
+    const timer = setTimeout(() => setShown(false), reducedMotion() ? 0 : FADE_MS);
+    return () => clearTimeout(timer);
+  }, [active]);
+  return active || shown;
+}
+
+// One card that stays put while its project changes: the media and the title crossfade, the
+// media area folds away for a project without any, and a reflection crosses the glass.
 function ProjectPreview({ project, onOpen }) {
   const card = useRef(null);
   const { category, subcategory, entry, path } = project;
   const media = projectPreview(entry);
+  const layers = useCrossfade(entry.id, media);
+  const labels = useCrossfade(entry.id, { title: entry.title, path });
+  // The media area follows the current media's proportions. Until new media reports its own,
+  // the area keeps its present shape, then eases to the new one rather than jumping.
+  const src = media?.src;
+  const [ratio, setRatio] = useState(() => mediaRatios.get(src) || MEDIA_RATIO.fallback);
+  useEffect(() => { if (mediaRatios.has(src)) setRatio(mediaRatios.get(src)); }, [src]);
+  const measured = from => value => {
+    if (!Number.isFinite(value) || value <= 0) return;
+    const shape = Math.min(MEDIA_RATIO.max, Math.max(MEDIA_RATIO.min, value));
+    mediaRatios.set(from, shape);
+    if (from === src) setRatio(shape);
+  };
   const open = () => {
     onOpen?.(card.current);
     navigate(`#/${category.id}/${subcategory.id}/${entry.id}`);
   };
   return <section ref={card} className="work-preview" data-entry-id={entry.id} aria-label={`${entry.title} preview`}>
     <span className="work-preview-surface" aria-hidden="true" />
-    {media && <div className="work-preview-media" key={entry.id}><PreviewMedia media={media} /></div>}
+    <span key={entry.id} className="work-preview-glint" aria-hidden="true" />
+    <div className={`work-preview-stage${media ? '' : ' is-empty'}`} style={{ '--media-ratio': ratio }}>
+      <div className={`work-preview-media${media?.kind === 'image' ? ' is-image' : ''}`}>
+        {layers.filter(layer => layer.value).map(layer => <div key={layer.id} className={`work-preview-layer${layer.leaving ? ' is-leaving' : ''}`}>
+          <PreviewMedia media={layer.value} onRatio={measured(layer.value.src)} />
+        </div>)}
+      </div>
+    </div>
     <div className="work-preview-meta">
       <div className="work-preview-heading">
-        <h3 className="work-preview-title" data-morph-title>{entry.title}</h3>
-        <p className="work-preview-path">{path}</p>
+        {labels.map(label => <div key={label.id} className={`work-preview-label${label.leaving ? ' is-leaving' : ''}`} aria-hidden={label.leaving || undefined}>
+          <h3 className="work-preview-title" data-morph-title={label.leaving ? undefined : true}>{label.value.title}</h3>
+          <p className="work-preview-path">{label.value.path}</p>
+        </div>)}
       </div>
-      <button type="button" className="work-open" onClick={open}>View project <span aria-hidden="true">&rarr;</span></button>
+      <button type="button" className="work-open" onClick={open}>View <span aria-hidden="true">&rarr;</span></button>
     </div>
   </section>;
 }
@@ -74,6 +140,7 @@ const followPointer = event => {
 // One project as a glass row. Selecting it grows the row, lights its glass and sweeps a
 // reflection across it; its text only scales, so nothing re-wraps while it moves.
 function ProjectRow({ project, index, current, stacked, onPreview, onOpen }) {
+  const inline = useLinger(current);
   return <li className={`work-project${current ? ' is-selected' : ''}`}>
     <button type="button" className="work-row" aria-pressed={current} onClick={() => onPreview(project)} onPointerMove={followPointer}>
       <Glass />
@@ -83,7 +150,10 @@ function ProjectRow({ project, index, current, stacked, onPreview, onOpen }) {
         <span className="work-row-path">{project.path}</span>
       </span>
     </button>
-    {stacked && current && <ProjectPreview project={project} onOpen={onOpen} />}
+    {/* On phones the preview opens under its row, and folds away again when another is chosen. */}
+    {stacked && inline && <div className={`work-inline${current ? '' : ' is-closing'}`} inert={current ? undefined : true}>
+      <div className="work-inline-body"><ProjectPreview project={project} onOpen={onOpen} /></div>
+    </div>}
   </li>;
 }
 
@@ -155,19 +225,22 @@ export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, o
     || projects[0];
   useMoreBelow(list, `${category.id}/${stacked}/${selected.entry.id}`);
 
-  // A stacked row opens downwards, so bring all of it into the list's view. Only the list
-  // scrolls: moving the page would move the ocean scene.
+  // A stacked row opens downwards, so once it has opened, bring all of it into the list's view.
+  // Only the list scrolls: moving the page would move the ocean scene.
   const chosen = useRef(false);
   useEffect(() => {
-    if (!stacked || !chosen.current) return;
+    if (!stacked || !chosen.current) return undefined;
     chosen.current = false;
-    const box = list.current;
-    const item = box?.querySelector('.work-project.is-selected');
-    if (!item) return;
-    const view = box.getBoundingClientRect();
-    const rect = item.getBoundingClientRect();
-    const offset = rect.top < view.top ? rect.top - view.top - 8 : rect.bottom > view.bottom ? Math.min(rect.bottom - view.bottom + 12, rect.top - view.top - 8) : 0;
-    if (offset) box.scrollBy?.({ top: offset, behavior: 'smooth' });
+    const timer = setTimeout(() => {
+      const box = list.current;
+      const item = box?.querySelector('.work-project.is-selected');
+      if (!item) return;
+      const view = box.getBoundingClientRect();
+      const rect = item.getBoundingClientRect();
+      const offset = rect.top < view.top ? rect.top - view.top - 8 : rect.bottom > view.bottom ? Math.min(rect.bottom - view.bottom + 12, rect.top - view.top - 8) : 0;
+      if (offset) box.scrollBy?.({ top: offset, behavior: 'smooth' });
+    }, reducedMotion() ? 0 : FADE_MS + 40);
+    return () => clearTimeout(timer);
   }, [stacked, selected.entry.id]);
 
   const preview = project => {
@@ -214,7 +287,7 @@ export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, o
       </div>
     </div>
     {!stacked && <Handover id={category.id} className="work-preview-handover">
-      <ProjectPreview key={selected.entry.id} project={selected} onOpen={onOpen} />
+      <ProjectPreview project={selected} onOpen={onOpen} />
     </Handover>}
   </div>;
 }

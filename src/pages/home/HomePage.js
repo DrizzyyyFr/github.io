@@ -4,11 +4,15 @@ import PortfolioBrowser from '../../components/browser/PortfolioBrowser';
 import EntryOverlay from '../work/EntryOverlay';
 import OceanScene from './OceanScene';
 import { sceneAt } from './sceneTimeline';
+import { createDiveSound } from './diveSound';
 import './HomePage.css';
 
 // The introduction's pose on the scene's scroll timeline, and how long a fresh visit takes to glide there.
 const INTRODUCTION = 1 / 3;
 const GLIDE_MS = 4000;
+// How far the descent must go before the view counts as under the water: the rising waterline
+// has crossed the middle of the screen.
+const DIVE_DEPTH = .5;
 
 export default function HomePage({ route }) {
   const scene = useRef(null);
@@ -23,10 +27,17 @@ export default function HomePage({ route }) {
     let target = 0;
     let progress = 0;
     let previousTime;
+    const dive = createDiveSound();
+    // Unknown until the first paint, so a visit that opens under the water stays silent; only a
+    // crossing made afterwards counts as a dive.
+    let underwater;
 
     const paint = () => {
       const state = sceneAt(progress);
       oceanState.current = { ...state, reducedMotion: reduced.matches };
+      const under = state.submerge >= DIVE_DEPTH;
+      if (underwater !== undefined && under !== underwater) dive.crossed(under);
+      underwater = under;
       element.style.setProperty('--progress', target);
       element.style.setProperty('--intro-opacity', state.introOpacity);
       element.style.setProperty('--intro-x', `${state.introOffset}vw`);
@@ -82,6 +93,7 @@ export default function HomePage({ route }) {
     reduced.addEventListener?.('change', measure);
     return () => {
       cancelAnimationFrame(frame);
+      dive.destroy();
       window.removeEventListener('scroll', measure);
       window.removeEventListener('resize', measure);
       window.removeEventListener('hashchange', hashChanged);
