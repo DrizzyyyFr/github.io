@@ -12,14 +12,14 @@ Render the environment in one WebGL canvas. The page remains 2D with a 3D appear
 
 The water, lighting, and caustics are animated procedurally; do not use static background textures, SVG scenery, grain, floating decorative shards, or a bounded header background. The header stays transparent and borderless across screen widths. Cap rendering resolution and stop idle animation when hidden or offscreen. Shade only the visible side of the crossing, use a lightweight material for the waterline edge, and skip caustics after their detail fades out. Compute the two surface noise gradients analytically and reuse the shared illumination footprint across the water volume and floor. Keep the existing rendering budgets and adaptive resolution behavior: recover gradually after sustained stable frames, and preserve animation time across context loss and visibility changes. Reduced motion freezes decorative water movement and updates scroll state directly.
 
-Keep navigation free of instructional captions, status badges, and decorative slogans. The category tabs, numbered project rows with their topic path, the preview card, and the personal introduction provide the interface; the highlighted row alone marks the previewed project.
+Keep navigation free of instructional captions, status badges, and decorative slogans. The category tabs, numbered project rows, the preview card, and the personal introduction provide the interface; the highlighted row alone marks the previewed project.
 
 Keep the existing personal introduction. The only main categories are Animation and Technical Animation. Use real notes from the selected source; do not invent projects or biography.
 
 ## Interaction
 
 1. The Work panel opens on the Animation tab; there is no All work tab. The two tabs switch category and route to `#/category`.
-2. A category lists every one of its entries as a numbered row with its `Category / Topic` path. The routed entry, the category's remembered row, or the routed topic's first entry is previewed, in that order, else the first row.
+2. A category lists every one of its entries as a numbered row showing its title alone; neither the rows nor the preview card show a category or topic path. The routed entry, the category's remembered row, or the routed topic's first entry is previewed, in that order, else the first row.
 3. Clicking, tapping, or arrowing to a row previews it without changing the route. Hovering only lights a row and never moves the selection, so rows do not grow or shrink under a moving pointer.
 4. View expands the preview card into the reading surface with the original content inside, routing to `#/category/topic/entry`.
 5. Back, Escape, and browser back return to the panel. The browser remains mounted, preserving the previewed row and list scroll.

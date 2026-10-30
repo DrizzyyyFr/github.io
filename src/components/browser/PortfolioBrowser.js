@@ -4,9 +4,9 @@ import { projectPreview, youtubePreviewUrl } from './projectPreview';
 import useMediaQuery from './useMediaQuery';
 import './PortfolioBrowser.css';
 
-// Every entry of a category in one list; its topic becomes the row's path.
+// Every entry of a category in one list.
 const projectsOf = category => category.subcategories.flatMap(subcategory => subcategory.entries.map(entry => ({
-  category, subcategory, entry, path: `${category.label} / ${subcategory.label}`,
+  category, subcategory, entry,
 })));
 const navigate = hash => { if (window.location.hash !== hash) window.location.hash = hash; };
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -90,7 +90,7 @@ function useLinger(active) {
 // Nothing loads until the panel is `active` on screen, and only the shown project's media.
 function ProjectPreview({ project, active, onOpen }) {
   const card = useRef(null);
-  const { category, subcategory, entry, path } = project;
+  const { category, subcategory, entry } = project;
   const media = projectPreview(entry);
   const src = media?.src;
   const [readySrc, setReadySrc] = useState(null);
@@ -104,7 +104,7 @@ function ProjectPreview({ project, active, onOpen }) {
     return () => clearTimeout(timer);
   }, [waiting, src]);
   const layers = useCrossfade(entry.id, media, waiting);
-  const labels = useCrossfade(entry.id, { title: entry.title, path });
+  const labels = useCrossfade(entry.id, entry.title);
   // The media area follows the current media's proportions. Until new media reports its own,
   // the area keeps its present shape, then eases to the new one rather than jumping.
   const [ratio, setRatio] = useState(() => mediaRatios.get(src) || MEDIA_RATIO.fallback);
@@ -135,8 +135,7 @@ function ProjectPreview({ project, active, onOpen }) {
     <div className="work-preview-meta">
       <div className="work-preview-heading">
         {labels.map(label => <div key={label.id} className={`work-preview-label${label.leaving ? ' is-leaving' : ''}`} aria-hidden={label.leaving || undefined}>
-          <h3 className="work-preview-title" data-morph-title={label.leaving ? undefined : true}>{label.value.title}</h3>
-          <p className="work-preview-path">{label.value.path}</p>
+          <h3 className="work-preview-title" data-morph-title={label.leaving ? undefined : true}>{label.value}</h3>
         </div>)}
       </div>
       <button type="button" className="glass-button work-open" onClick={open}>View <span className="glass-button-icon" aria-hidden="true">&rarr;</span></button>
@@ -172,7 +171,6 @@ function ProjectRow({ project, index, current, stacked, active, onPreview, onOpe
       <span className="work-row-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
       <span className="work-row-text">
         <span className="work-row-title">{project.entry.title}</span>
-        <span className="work-row-path">{project.path}</span>
       </span>
     </button>
     {/* On phones the preview opens under its row, and folds away again when another is chosen. */}

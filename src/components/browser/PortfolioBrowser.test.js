@@ -19,7 +19,7 @@ beforeEach(() => {
 });
 afterEach(() => { jest.useRealTimers(); });
 
-test('the two categories are tabs and every project of the selected one is listed with its path', () => {
+test('the two categories are tabs and every project of the selected one is listed by its title alone', () => {
   const view = render(<PortfolioBrowser />);
   const tabs = within(screen.getByRole('tablist', { name: 'Work categories' })).getAllByRole('tab');
   expect(tabs.map(tab => tab.textContent)).toEqual(['Animation', 'Technical Animation']);
@@ -27,13 +27,15 @@ test('the two categories are tabs and every project of the selected one is liste
   expect(screen.queryByRole('tab', { name: /all work/i })).not.toBeInTheDocument();
   expect(navigation.some(item => /about/i.test(item.label))).toBe(false);
   expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(2);
-  expect(row('8 Directional Chair State Animations\\s*Animation / Interactions')).toHaveAttribute('aria-pressed', 'true');
+  expect(row('8 Directional Chair State Animations')).toHaveAttribute('aria-pressed', 'true');
+  // A row names its project only; the topic path belongs to the preview card.
+  expect(screen.queryByText('Animation / Interactions', { selector: '.work-row *' })).toBeNull();
   fireEvent.click(tabs[1]);
   expect(window.location.hash).toBe('#/technical-animation');
   view.rerender(<PortfolioBrowser categoryId="technical-animation" />);
   handOver();
   expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(9);
-  expect(row('Getting Started\\s*Technical Animation / Procedural Systems')).toBeInTheDocument();
+  expect(row('Getting Started')).toBeInTheDocument();
   expect(screen.getByRole('tab', { name: 'Technical Animation' })).toHaveAttribute('aria-selected', 'true');
 });
 
