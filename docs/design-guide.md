@@ -20,7 +20,7 @@ Keep the existing personal introduction. The only main categories are Animation 
 
 1. The Work panel opens on the Animation tab; there is no All work tab. The two tabs switch category and route to `#/category`.
 2. A category lists every one of its entries as a numbered row with its `Category / Topic` path. The routed entry, the category's remembered row, or the routed topic's first entry is previewed, in that order, else the first row.
-3. Clicking a row previews it without changing the route.
+3. Clicking, tapping, or arrowing to a row previews it without changing the route. Hovering only lights a row and never moves the selection, so rows do not grow or shrink under a moving pointer.
 4. View project expands the preview card into the reading surface with the original content inside, routing to `#/category/topic/entry`.
 5. Back, Escape, and browser back return to the panel. The browser remains mounted, preserving the previewed row and list scroll.
 
@@ -42,12 +42,14 @@ Edit shared interface values in `src/styles/tokens.css` and environmental lighti
 | `--glass-edge` | Fine cyan/warm edge highlights |
 | `--shard-outline` | Shared six-point cut-glass silhouette |
 
-The geometry takes its cue from the fractured-glass UI Lab reference, adapted to clear text and direct interaction. Project rows are glass with a pointed right edge; the previewed row brightens and gains a cyan edge bar. The preview card uses the expanded pane's glass and outline, so opening it reads as one surface growing. Every painted glass layer carries its own clip-path: a layer that relies on its parent's clip can render as its full rectangle.
+The geometry takes its cue from the fractured-glass UI Lab reference, adapted to clear text and direct interaction. Project rows are numbered glass panes with a pointed right edge; the tab highlight is a glass parallelogram. Both share one CSS glass (`.work-glass`), lit by the scene's sun at the top right: the 1px rim is warm where it faces the sun and cool in shade, light pools in the top-right corner, the bottom left falls into shade, each pane casts a soft shadow down and to the left, faint diagonal facets mark the glass, and a mouse carries a small sun highlight across it. The selected row is the lit `--glass-fill` pane with a cyan edge. Every painted glass layer carries its own clip-path: a layer that relies on its parent's clip can render as its full rectangle.
 
 ## Motion
 
 - Native scroll progress drives the shared scene timeline with a brief smoothing response. The name enters and exits to the left; the introduction remains readable during the high-sun hold. Reveal navigation only after the descent begins. Do not trap the page in timed slides or intercept page wheel gestures.
-- Switching category unfolds the new list from the left over 560ms; a new preview fades its media in over 420ms. Row highlights transition registered custom properties rather than filter.
+- A fresh visit with no route glides from sunrise down to the introduction over 4s with ease-in-out. Any wheel, touch, key, press, or navigation stops it at once; a link to a section or project opens on its own pose without gliding; reduced motion goes straight to the introduction.
+- Selecting a row grows it taller and slightly wider over 560ms, lights its glass over 420ms, raises the cyan edge, and sweeps a reflection across it over 1.2s. Its number and text only scale, so nothing re-wraps while it moves. Selection, hover, and the sweep transition registered custom properties that every glass layer inherits. The tab highlight glides to a newly chosen tab over 560ms.
+- Switching category lets the old list and card leave over 160ms, then unfolds the new ones from the left over 720ms; a new preview fades its media in over 420ms.
 - Follow `G:\GanglifeBevy\game\src\ui_lab\shards\transition.rs`: one reversible 720ms timeline. Between progress .12 and .84, interpolate the preview card's actual bounds and six-point outline toward the expanded frame. Reposition its title independently; never scale a whole prelaid-out page.
 - Over progress 0 to .3 the card fades out while the pane's glass fades in over it. Project rows retreat left and shrink with staggered smoothstep timing; the tabs, heading, header, and footer fade. The card's title stays hidden until return. Reveal the content by clipping its height only during progress .77 to 1. Show the return control near the end; Escape remains available throughout. Closing reverses the same timeline, including mid-transition interruptions.
 - Reduced-motion preferences disable the animated morph, decorative movement, and transitions. Keep all navigation and content usable.

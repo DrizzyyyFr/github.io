@@ -134,6 +134,7 @@ test('the introduction cue and Work route target their scroll poses, then keyboa
   category.focus();
   fireEvent.keyDown(category, { key: 'ArrowRight' });
   fireEvent(window, new Event('hashchange'));
+  act(() => jest.advanceTimersByTime(180));
   expect(window.location.hash).toBe('#/technical-animation');
   expect(screen.getByRole('tab', { name: 'Technical Animation' })).toHaveAttribute('aria-selected', 'true');
   expect(screen.getByRole('button', { name: /Parametric Point Cloud Blend Space/ })).toHaveAttribute('aria-pressed', 'true');
@@ -158,4 +159,40 @@ test('the full click path opens content without replacing the underwater scene, 
   expect(document.querySelector('.scroll-scene')).toBe(scene);
   expect(scene).toHaveAttribute('data-phase', 'underwater');
   expect(screen.getByRole('button', { name: /Vehicular Interaction Animations/ })).toHaveAttribute('aria-pressed', 'true');
+});
+
+const lastScrollTop = () => window.scrollTo.mock.calls.at(-1)?.[0].top;
+
+test('a fresh visit glides down to the introduction over four seconds, easing in and out', () => {
+  renderScene();
+  act(() => jest.advanceTimersByTime(500));
+  const early = lastScrollTop();
+  act(() => jest.advanceTimersByTime(1500));
+  const middle = lastScrollTop();
+  expect(early).toBeGreaterThan(0);
+  expect(early).toBeLessThan(100);
+  expect(middle).toBeGreaterThan(400);
+  expect(middle).toBeLessThan(600);
+  act(() => jest.advanceTimersByTime(2200));
+  expect(lastScrollTop()).toBeCloseTo(1000);
+  const calls = window.scrollTo.mock.calls.length;
+  act(() => jest.advanceTimersByTime(1000));
+  expect(window.scrollTo.mock.calls.length).toBe(calls);
+});
+
+test('the visitor takes over the glide at once, and a link to a section never starts it', () => {
+  renderScene();
+  act(() => jest.advanceTimersByTime(1000));
+  const calls = window.scrollTo.mock.calls.length;
+  fireEvent.wheel(window);
+  act(() => jest.advanceTimersByTime(4000));
+  expect(window.scrollTo.mock.calls.length).toBe(calls);
+});
+
+test('a link to the work section opens there without gliding to the introduction', () => {
+  window.history.replaceState(null, '', '#work');
+  renderScene();
+  act(() => jest.advanceTimersByTime(4000));
+  expect(window.scrollTo.mock.calls.every(([options]) => options.behavior === 'instant')).toBe(true);
+  expect(window.scrollTo).toHaveBeenCalledTimes(1);
 });

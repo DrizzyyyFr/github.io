@@ -1,14 +1,20 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { StrictMode } from 'react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import PortfolioBrowser from './PortfolioBrowser';
 import { navigation } from '../../config/navigation';
 
 const stacked = '(max-width: 850px) and (orientation: portrait)';
 const row = name => screen.getByRole('button', { name: new RegExp(name) });
 
+// A category change hands over: the old list leaves for 160ms before the new one arrives.
+const handOver = () => act(() => jest.advanceTimersByTime(180));
+
 beforeEach(() => {
+  jest.useFakeTimers();
   window.matchMedia = () => ({ matches: false });
   window.history.replaceState(null, '', '/');
 });
+afterEach(() => { jest.useRealTimers(); });
 
 test('the two categories are tabs and every project of the selected one is listed with its path', () => {
   const view = render(<PortfolioBrowser />);
@@ -22,6 +28,7 @@ test('the two categories are tabs and every project of the selected one is liste
   fireEvent.click(tabs[1]);
   expect(window.location.hash).toBe('#/technical-animation');
   view.rerender(<PortfolioBrowser categoryId="technical-animation" />);
+  handOver();
   expect(within(screen.getByRole('tabpanel')).getAllByRole('listitem')).toHaveLength(9);
   expect(row('Getting Started\\s*Technical Animation / Procedural Systems')).toBeInTheDocument();
   expect(screen.getByRole('tab', { name: 'Technical Animation' })).toHaveAttribute('aria-selected', 'true');
@@ -50,10 +57,13 @@ test('the preview loops a muted video, shows an image, or shows no media and no 
   expect(video).toHaveAttribute('loop');
   expect(video).toHaveAttribute('autoplay');
   view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="optimization-and-profiling-profiling-anim-graphs" />);
+  handOver();
   expect(document.querySelector('.work-preview video').getAttribute('src')).toContain('2026-03-01-18-18-26');
   view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="procedural-systems-lookat-documentation-simple-state-machine" />);
+  handOver();
   expect(within(screen.getByRole('region', { name: /preview/ })).getByRole('img', { name: 'Pasted image 20260301171057' })).toBeInTheDocument();
   view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="download" />);
+  handOver();
   const card = screen.getByRole('region', { name: 'Download preview' });
   expect(card.querySelector('.work-preview-media')).toBeNull();
   expect(card).not.toHaveTextContent('Procedural Animation Toolkit');
@@ -72,10 +82,13 @@ test('a routed entry is previewed, kept after the route returns to its topic, an
   const view = render(<PortfolioBrowser categoryId="technical-animation" subcategoryId="procedural-systems" entryId="procedural-systems-lookat-l-a-slides" />);
   expect(row('L-A Slides')).toHaveAttribute('aria-pressed', 'true');
   view.rerender(<PortfolioBrowser categoryId="technical-animation" subcategoryId="procedural-systems" />);
+  handOver();
   expect(row('L-A Slides')).toHaveAttribute('aria-pressed', 'true');
   view.rerender(<PortfolioBrowser categoryId="animation" />);
+  handOver();
   expect(row('8 Directional Chair State Animations')).toHaveAttribute('aria-pressed', 'true');
   view.rerender(<PortfolioBrowser categoryId="technical-animation" />);
+  handOver();
   expect(row('L-A Slides')).toHaveAttribute('aria-pressed', 'true');
   view.unmount();
   render(<PortfolioBrowser categoryId="technical-animation" subcategoryId="automation" />);
@@ -107,4 +120,16 @@ test('portrait phones open the selected row in place with its preview', () => {
   expect(within(second).getByRole('region', { name: 'Vehicular Interaction Animations preview' })).toBeInTheDocument();
   expect(screen.getAllByRole('region')).toHaveLength(1);
   expect(document.querySelector('.portfolio-browser')).toHaveClass('is-stacked');
+});
+
+// npm start runs under StrictMode, which mounts every effect twice; selection must still work there.
+test('a click selects a row under StrictMode, and hovering a row never changes the selection', () => {
+  render(<StrictMode><PortfolioBrowser categoryId="animation" /></StrictMode>);
+  fireEvent.mouseEnter(row('Vehicular Interaction Animations'));
+  fireEvent.mouseMove(row('Vehicular Interaction Animations'), { clientX: 20, clientY: 30 });
+  expect(row('8 Directional Chair State Animations')).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(row('Vehicular Interaction Animations'));
+  expect(row('Vehicular Interaction Animations')).toHaveAttribute('aria-pressed', 'true');
+  expect(row('8 Directional Chair State Animations')).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByRole('region', { name: 'Vehicular Interaction Animations preview' })).toBeInTheDocument();
 });

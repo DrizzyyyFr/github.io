@@ -6,6 +6,10 @@ import OceanScene from './OceanScene';
 import { sceneAt } from './sceneTimeline';
 import './HomePage.css';
 
+// The introduction's pose on the scene's scroll timeline, and how long a fresh visit takes to glide there.
+const INTRODUCTION = 1 / 3;
+const GLIDE_MS = 4000;
+
 export default function HomePage({ route }) {
   const scene = useRef(null);
   const origin = useRef(null);
@@ -60,7 +64,7 @@ export default function HomePage({ route }) {
       const hash = window.location.hash;
       let destination;
       if (hash === '#/' || !hash) destination = 0;
-      else if (hash === '#about') destination = 1 / 3;
+      else if (hash === '#about') destination = INTRODUCTION;
       else if (hash === '#work' || initial) destination = 1;
       if (destination !== undefined) {
         const top = element.getBoundingClientRect().top + window.scrollY;
@@ -83,6 +87,41 @@ export default function HomePage({ route }) {
       window.removeEventListener('hashchange', hashChanged);
       reduced.removeEventListener?.('change', measure);
     };
+  }, []);
+
+  // A fresh visit glides from sunrise down to the introduction over four seconds, easing in
+  // and out. A link to a section or project keeps its own pose, and any wheel, touch, key,
+  // press or navigation hands the page back to the visitor at once.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash !== '#/') return undefined;
+    const element = scene.current;
+    const introduction = () => element.getBoundingClientRect().top + window.scrollY
+      + Math.max(0, element.offsetHeight - window.innerHeight) * INTRODUCTION;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      window.scrollTo({ top: introduction(), behavior: 'instant' });
+      return undefined;
+    }
+    const takeovers = ['wheel', 'touchstart', 'keydown', 'pointerdown', 'hashchange'];
+    let frame = 0;
+    let start;
+    let from;
+    const stop = () => {
+      cancelAnimationFrame(frame);
+      takeovers.forEach(name => window.removeEventListener(name, stop));
+    };
+    const step = time => {
+      if (start === undefined) { start = time; from = window.scrollY; }
+      const t = Math.min(1, (time - start) / GLIDE_MS);
+      const eased = t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+      // The target is read every frame, so a resize or late layout still lands on the name.
+      window.scrollTo({ top: from + (introduction() - from) * eased, behavior: 'instant' });
+      if (t < 1) frame = requestAnimationFrame(step);
+      else stop();
+    };
+    takeovers.forEach(name => window.addEventListener(name, stop, { passive: true }));
+    frame = requestAnimationFrame(step);
+    return stop;
   }, []);
 
   return <main id="main" className="home-page">

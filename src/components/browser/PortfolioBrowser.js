@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import portfolio from '../../content/portfolio.json';
 import { projectPreview } from './projectPreview';
 import useMediaQuery from './useMediaQuery';
@@ -9,6 +9,23 @@ const projectsOf = category => category.subcategories.flatMap(subcategory => sub
   category, subcategory, entry, path: `${category.label} / ${subcategory.label}`,
 })));
 const navigate = hash => { if (window.location.hash !== hash) window.location.hash = hash; };
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Changing category lets the old content leave before the new content unfolds from the left.
+function Handover({ id, className, children }) {
+  const [shown, setShown] = useState(id);
+  const retained = useRef(children);
+  const leaving = shown !== id;
+  if (!leaving) retained.current = children;
+  useEffect(() => {
+    if (!leaving) return undefined;
+    const timer = setTimeout(() => setShown(id), reducedMotion() ? 0 : 160);
+    return () => clearTimeout(timer);
+  }, [id, leaving]);
+  return <div className={`work-handover ${className}${leaving ? ' is-leaving' : ''}`} inert={leaving ? true : undefined}>
+    <div key={shown} className="work-arrival">{leaving ? retained.current : children}</div>
+  </div>;
+}
 
 function PreviewMedia({ media }) {
   const still = useMediaQuery('(prefers-reduced-motion: reduce)');
@@ -38,12 +55,80 @@ function ProjectPreview({ project, onOpen }) {
   </section>;
 }
 
-// Flags the list while rows remain below its fold, so the edge fades only when there is more to scroll.
+// The glass of a row or of the tab highlight: a rim that catches the sun, a resting and a lit
+// pane, the sun's light and shade, and a reflection that sweeps across on selection. Every
+// layer is CSS and carries its own clip-path.
+const Glass = () => <span className="work-glass" aria-hidden="true">
+  <span className="work-glass-lit" /><span className="work-glass-light" /><span className="work-glass-glint" />
+</span>;
+
+// A mouse over the glass carries a small sun highlight with it. It writes the pointer
+// position straight onto the row, so following it costs no render.
+const followPointer = event => {
+  if (event.pointerType !== 'mouse') return;
+  const box = event.currentTarget.getBoundingClientRect();
+  event.currentTarget.style.setProperty('--pointer-x', `${event.clientX - box.left}px`);
+  event.currentTarget.style.setProperty('--pointer-y', `${event.clientY - box.top}px`);
+};
+
+// One project as a glass row. Selecting it grows the row, lights its glass and sweeps a
+// reflection across it; its text only scales, so nothing re-wraps while it moves.
+function ProjectRow({ project, index, current, stacked, onPreview, onOpen }) {
+  return <li className={`work-project${current ? ' is-selected' : ''}`}>
+    <button type="button" className="work-row" aria-pressed={current} onClick={() => onPreview(project)} onPointerMove={followPointer}>
+      <Glass />
+      <span className="work-row-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+      <span className="work-row-text">
+        <span className="work-row-title">{project.entry.title}</span>
+        <span className="work-row-path">{project.path}</span>
+      </span>
+    </button>
+    {stacked && current && <ProjectPreview project={project} onOpen={onOpen} />}
+  </li>;
+}
+
+// The selected tab's glass glides to a newly chosen tab instead of jumping. It measures
+// through its own parent, because the tab list's ref is not attached yet when a child's
+// layout effect first runs, and only starts gliding after it has been placed once.
+function TabGlass({ selectedIndex }) {
+  const anchor = useRef(null);
+  const [place, setPlace] = useState(null);
+  const [placed, setPlaced] = useState(false);
+  useLayoutEffect(() => {
+    const list = anchor.current?.parentElement;
+    if (!list) return undefined;
+    const measure = () => {
+      const tab = list.querySelectorAll('[role="tab"]')[selectedIndex];
+      if (tab) setPlace(previous => previous && previous.x === tab.offsetLeft && previous.y === tab.offsetTop && previous.width === tab.offsetWidth && previous.height === tab.offsetHeight
+        ? previous : { x: tab.offsetLeft, y: tab.offsetTop, width: tab.offsetWidth, height: tab.offsetHeight });
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [selectedIndex]);
+  useEffect(() => {
+    if (!place || placed) return undefined;
+    const frame = requestAnimationFrame(() => setPlaced(true));
+    return () => cancelAnimationFrame(frame);
+  }, [place, placed]);
+  return <span ref={anchor} className={`work-tab-glass${placed ? ' is-placed' : ''}`} aria-hidden="true"
+    style={place ? { transform: `translate(${place.x}px, ${place.y}px)`, width: place.width, height: place.height } : { display: 'none' }}>
+    <Glass />
+  </span>;
+}
+
+// Flags the list while rows remain beyond either end, so an edge fades only when there is
+// more to scroll that way, and a row scrolled past the top dissolves instead of being cut.
 function useMoreBelow(list, key) {
   useEffect(() => {
     const element = list.current;
     if (!element) return undefined;
-    const update = () => element.toggleAttribute('data-more', element.scrollTop + element.clientHeight < element.scrollHeight - 2);
+    const update = () => {
+      element.toggleAttribute('data-more', element.scrollTop + element.clientHeight < element.scrollHeight - 2);
+      element.toggleAttribute('data-above', element.scrollTop > 2);
+    };
     update();
     element.addEventListener('scroll', update, { passive: true });
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
@@ -86,6 +171,7 @@ export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, o
   }, [stacked, selected.entry.id]);
 
   const preview = project => {
+    if (project.entry.id === selected.entry.id) return;
     chosen.current = true;
     setPreviewed(previous => ({ ...previous, [category.id]: project.entry.id }));
   };
@@ -113,29 +199,22 @@ export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, o
   return <div className={`portfolio-browser${stacked ? ' is-stacked' : ''}`}>
     <div className="work-index">
       <div className="work-tabs" role="tablist" aria-label="Work categories" onKeyDown={tabKeys}>
+        <TabGlass selectedIndex={categories.indexOf(category)} />
         {categories.map((item, index) => <button key={item.id} type="button" role="tab" id={`work-tab-${item.id}`} className="work-tab"
           aria-selected={item === category} aria-controls="work-projects" tabIndex={item === category ? 0 : -1}
           onClick={() => chooseCategory(index)}>{item.label}</button>)}
       </div>
       <div ref={list} id="work-projects" className="work-projects" role="tabpanel" aria-labelledby={`work-tab-${category.id}`}>
-        <ul key={category.id} className="work-project-list" onKeyDown={rowKeys}>
-          {projects.map((project, index) => {
-            const current = project === selected;
-            return <li key={project.entry.id} className={`work-project${current ? ' is-selected' : ''}`}>
-              <button type="button" className="work-row" aria-pressed={current} onClick={() => preview(project)}>
-                <span className="work-row-surface" aria-hidden="true" />
-                <span className="work-row-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-                <span className="work-row-text">
-                  <span className="work-row-title">{project.entry.title}</span>
-                  <span className="work-row-path">{project.path}</span>
-                </span>
-              </button>
-              {stacked && current && <ProjectPreview project={project} onOpen={onOpen} />}
-            </li>;
-          })}
-        </ul>
+        <Handover id={category.id} className="work-list-handover">
+          <ul className="work-project-list" onKeyDown={rowKeys}>
+            {projects.map((project, index) => <ProjectRow key={project.entry.id} project={project} index={index} current={project === selected}
+              stacked={stacked} onPreview={preview} onOpen={onOpen} />)}
+          </ul>
+        </Handover>
       </div>
     </div>
-    {!stacked && <ProjectPreview key={selected.entry.id} project={selected} onOpen={onOpen} />}
+    {!stacked && <Handover id={category.id} className="work-preview-handover">
+      <ProjectPreview key={selected.entry.id} project={selected} onOpen={onOpen} />
+    </Handover>}
   </div>;
 }
