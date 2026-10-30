@@ -99,14 +99,42 @@ test('switching projects crossfades the card instead of cutting to the next one'
   // The same card stays on screen, holding the outgoing media and title while the new ones arrive.
   expect(screen.getByRole('region', { name: 'Vehicular Interaction Animations preview' })).toBe(card);
   expect(card.querySelectorAll('.work-preview-layer')).toHaveLength(2);
-  expect(card.querySelector('.work-preview-layer.is-leaving video').getAttribute('src')).toContain('chair-inengine');
   expect(card.querySelector('.work-preview-label.is-leaving')).toHaveTextContent('8 Directional Chair State Animations');
   expect(card.querySelector('.work-preview-label.is-leaving')).toHaveAttribute('aria-hidden', 'true');
   expect(card.querySelector('[data-morph-title]')).toHaveTextContent('Vehicular Interaction Animations');
+  // Until the new video can play, it waits unseen and the outgoing one stays in full, even past the fade.
+  const [outgoing, incoming] = card.querySelectorAll('.work-preview-layer');
+  expect(outgoing.querySelector('video').getAttribute('src')).toContain('chair-inengine');
+  expect(incoming).toHaveClass('is-waiting');
+  fadeOut();
+  expect(outgoing).not.toHaveClass('is-leaving');
+  expect(card.querySelectorAll('.work-preview-layer')).toHaveLength(2);
+  fireEvent.canPlay(incoming.querySelector('video'));
+  expect(incoming).not.toHaveClass('is-waiting');
+  expect(outgoing).toHaveClass('is-leaving');
   fadeOut();
   expect(card.querySelectorAll('.work-preview-layer')).toHaveLength(1);
   expect(card.querySelectorAll('.work-preview-label')).toHaveLength(1);
   expect(card.querySelector('.work-preview-layer video').getAttribute('src')).toContain('2026-03-16-20-34-39');
+});
+
+test('media that never reports ready is shown anyway after a short wait', () => {
+  render(<PortfolioBrowser categoryId="animation" />);
+  fireEvent.click(row('Vehicular Interaction Animations'));
+  act(() => jest.advanceTimersByTime(2600));
+  expect(document.querySelector('.work-preview-layer.is-waiting')).toBeNull();
+  fadeOut();
+  expect(document.querySelectorAll('.work-preview-layer')).toHaveLength(1);
+});
+
+test('preview media only loads while the panel is on screen', () => {
+  const view = render(<PortfolioBrowser categoryId="animation" active={false} />);
+  expect(document.querySelector('.work-preview video')).toBeNull();
+  expect(screen.getByRole('region', { name: '8 Directional Chair State Animations preview' })).toBeInTheDocument();
+  view.rerender(<PortfolioBrowser categoryId="animation" active />);
+  expect(document.querySelector('.work-preview video').getAttribute('src')).toContain('chair-inengine');
+  view.rerender(<PortfolioBrowser categoryId="animation" active={false} />);
+  expect(document.querySelector('.work-preview video')).toBeNull();
 });
 
 test('reduced motion keeps the preview video still', () => {
@@ -114,7 +142,8 @@ test('reduced motion keeps the preview video still', () => {
   const view = render(<PortfolioBrowser categoryId="animation" />);
   const video = document.querySelector('.work-preview video');
   expect(video).not.toHaveAttribute('autoplay');
-  expect(video).toHaveAttribute('preload', 'metadata');
+  // It still loads, so it shows a still first frame rather than an empty area.
+  expect(video).toHaveAttribute('preload', 'auto');
   view.rerender(<PortfolioBrowser categoryId="technical-animation" entryId="physical-systems-physia-framework-to-solve-procedural-active-ragdolls" />);
   handOver();
   expect(document.querySelector('.work-preview iframe').getAttribute('src')).toContain('autoplay=0');

@@ -18,7 +18,9 @@
   --water-dawn: linear-gradient(180deg, #4c6880 0%, #2e526b 22%, #173b55 62%, #132c47 100%);
   --water-day: linear-gradient(180deg, #5b93a9 0%, #37788f 25%, #24566f 65%, #132c47 100%);
   --water-dusk: linear-gradient(180deg, #996e83 0%, #62506d 24%, #343b5b 65%, #132c47 100%);
-  --shard-outline: polygon(0% 18%, 6% 0%, 94% 3%, 100% 80%, 96% 100%, 2% 94%);
+  /* The preview card and the expanded project pane: a plain rectangle, written as the six points
+     the entry morph blends between. */
+  --shard-outline: polygon(0% 0%, 0% 0%, 100% 0%, 100% 0%, 100% 100%, 0% 100%);
   --glass-fill: linear-gradient(124deg, #325d7e 0%, #254b70 38%, #254260 68%, #625b70 100%);
   /* The glass rim catches the scene's sun at the top right and fades to a faint cool line in shade. */
   --glass-edge: linear-gradient(to bottom left, #ffe0b4bf, #ffe0b42e 36%, #8ddff71f 70%, #8ddff714);
@@ -47,4 +49,7 @@
   --space-8: 64px;
   --page-gutter: clamp(22px, 5vw, 160px);
   --ease-glide: cubic-bezier(.22, 1, .36, 1);
+  /* An even ease in and out for interface motion: --ease-glide spends most of its movement in
+     the first tenth of a second, which reads as abrupt on a selection or crossfade. */
+  --ease-soft: cubic-bezier(.45, .05, .25, 1);
 }

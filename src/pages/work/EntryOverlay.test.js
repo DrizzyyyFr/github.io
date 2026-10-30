@@ -96,10 +96,10 @@ test('an immediate close cancels the pending frame and restores body state', () 
   expect(jest.getTimerCount()).toBe(0);
 });
 
-test('the preview card grows into the pane, hands over its glass, updates on resize, and cleans scene retreat', () => {
+test('the preview card grows into the pane, hands over its glass, updates on resize, and cleans up the retreat', () => {
   const fixture = document.createElement('div');
   fixture.className = 'site-layout';
-  fixture.innerHTML = '<div class="scroll-scene"><button class="work-row"></button><button class="work-row"></button><section class="work-preview" data-entry-id="interactions-8-directional-chair-state-animations"><h3 data-morph-title>Entry</h3></section></div>';
+  fixture.innerHTML = '<header class="site-header"></header><div class="scroll-scene"><button class="work-row"></button><button class="work-row"></button><section class="work-preview" data-entry-id="interactions-8-directional-chair-state-animations"><h3 data-morph-title>Entry</h3></section></div>';
   document.body.appendChild(fixture);
   const pane = fixture.querySelector('.work-preview');
   pane.getBoundingClientRect = () => ({ left: 200, top: 200, width: 240, height: 100 });
@@ -113,16 +113,20 @@ test('the preview card grows into the pane, hands over its glass, updates on res
   act(() => jest.advanceTimersByTime(800));
   expect(pane.style.opacity).toBe('0');
   expect(dialog.style.getPropertyValue('--surface-opacity')).toBe('1');
-  expect(fixture.style.getPropertyValue('--entry-retreat')).toBe('1');
-  expect(fixture.querySelectorAll('.work-row')[1].style.getPropertyValue('--entry-pane-retreat')).toBe('1');
+  // The retreat is written on the elements that read it, never on the page's root, which would
+  // restyle the whole page on every frame; rows move by their own transform.
+  expect(fixture.querySelector('.site-header').style.getPropertyValue('--entry-retreat')).toBe('1');
+  expect(fixture.style.getPropertyValue('--entry-retreat')).toBe('');
+  expect(fixture.querySelector('.scroll-scene').getAttribute('style')).toBeNull();
+  expect(fixture.querySelectorAll('.work-row')[1].style.transform).toBe('translateX(-75vw) scale(0.88)');
   window.innerWidth = 420;
   fireEvent.resize(window);
   expect(dialog.style.width).toBe('400px');
   view.unmount();
   expect(pane).not.toHaveClass('is-entry-source');
   expect(pane.style.opacity).toBe('');
-  expect(fixture.style.getPropertyValue('--entry-retreat')).toBe('');
-  expect(fixture.querySelector('.scroll-scene').style.getPropertyValue('--entry-travel')).toBe('');
+  expect(fixture.querySelector('.site-header').style.getPropertyValue('--entry-retreat')).toBe('');
+  expect(fixture.querySelectorAll('.work-row')[1].style.transform).toBe('');
   window.innerWidth = previousWidth;
   fixture.remove();
 });

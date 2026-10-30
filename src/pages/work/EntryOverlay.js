@@ -37,7 +37,7 @@ function ExpandedEntry({ route, closing, origin, onExited }) {
     onCancel={event => { event.preventDefault(); close(); }}>
     <div className="entry-pane-surface" aria-hidden="true" />
     <h2 ref={heading} id="expanded-entry-title" className="expanded-entry-title">{entry.title}</h2>
-    <button ref={back} className="entry-return" onClick={close} aria-label="Close entry"><span aria-hidden="true">&larr;</span> Back</button>
+    <button ref={back} className="glass-button entry-return" onClick={close} aria-label="Close entry"><span className="glass-button-icon" aria-hidden="true">&larr;</span> Back</button>
     <div ref={viewport} className="entry-scroll">
       <article className="entry-content"><NoteContent body={entry.body} /></article>
     </div>

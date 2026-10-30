@@ -126,7 +126,7 @@ export default function MusicPlayer({ tracks = musicTracks }) {
       onError={() => { playingIntent.current = false; setPlaying(false); setError('This track could not be loaded.'); }} />
     {createPortal(<section className="music-player" aria-label="Music player" data-playing={playing}>
       <div className="music-player-main">
-        <button className="music-play" type="button" onClick={togglePlayback} disabled={!track} aria-label={playing ? 'Pause music' : 'Play music'}>
+        <button className="glass-button is-round music-play" type="button" onClick={togglePlayback} disabled={!track} aria-label={playing ? 'Pause music' : 'Play music'}>
           <PlayerIcon name={playing ? 'pause' : 'play'} />
         </button>
         <div className="music-track">

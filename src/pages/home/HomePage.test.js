@@ -10,8 +10,6 @@ beforeEach(() => {
   window.history.replaceState(null, '', '/');
   window.matchMedia = () => ({ matches: false });
   window.scrollTo = jest.fn();
-  jest.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
-  jest.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   Object.defineProperty(window, 'scrollY', { configurable: true, value: 0, writable: true });
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: 1000, writable: true });
   HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
@@ -163,43 +161,6 @@ test('the full click path opens content without replacing the underwater scene, 
   expect(screen.getByRole('button', { name: /Vehicular Interaction Animations/ })).toHaveAttribute('aria-pressed', 'true');
 });
 
-const greetings = () => HTMLMediaElement.prototype.play.mock.instances.filter(audio => audio.src.endsWith('/audio/under-the-water.mp3')).length;
-
-test('going under the water plays the greeting once a visit', () => {
-  const { scroll } = renderScene();
-  scroll(2 / 3);
-  expect(greetings()).toBe(0);
-  scroll(.8);
-  expect(greetings()).toBe(0);
-  scroll(1);
-  expect(greetings()).toBe(1);
-  scroll(1 / 3);
-  scroll(1);
-  expect(greetings()).toBe(1);
-});
-
-test('a greeting the browser refuses plays at the first click while still under the water', async () => {
-  HTMLMediaElement.prototype.play.mockRejectedValueOnce(new Error('NotAllowedError'));
-  const { scroll } = renderScene();
-  scroll(1);
-  await act(async () => {});
-  expect(greetings()).toBe(1);
-  fireEvent.pointerDown(document.body);
-  expect(greetings()).toBe(2);
-  fireEvent.pointerDown(document.body);
-  expect(greetings()).toBe(2);
-});
-
-test('a visit that opens under the water stays silent until it dives again', () => {
-  window.history.replaceState(null, '', '#work');
-  const { scroll } = renderScene();
-  scroll(1);
-  expect(greetings()).toBe(0);
-  scroll(2 / 3);
-  scroll(1);
-  expect(greetings()).toBe(1);
-});
-
 const lastScrollTop = () => window.scrollTo.mock.calls.at(-1)?.[0].top;
 
 test('a fresh visit glides down to the introduction over four seconds, easing in and out', () => {
@@ -219,7 +180,7 @@ test('a fresh visit glides down to the introduction over four seconds, easing in
   expect(window.scrollTo.mock.calls.length).toBe(calls);
 });
 
-test('the visitor takes over the glide at once, and a link to a section never starts it', () => {
+test('the visitor takes over the glide at once', () => {
   renderScene();
   act(() => jest.advanceTimersByTime(1000));
   const calls = window.scrollTo.mock.calls.length;
@@ -228,10 +189,37 @@ test('the visitor takes over the glide at once, and a link to a section never st
   expect(window.scrollTo.mock.calls.length).toBe(calls);
 });
 
-test('a link to the work section opens there without gliding to the introduction', () => {
+test('a link to the work section starts at sunrise and glides there over four seconds', () => {
   window.history.replaceState(null, '', '#work');
   renderScene();
-  act(() => jest.advanceTimersByTime(4000));
-  expect(window.scrollTo.mock.calls.every(([options]) => options.behavior === 'instant')).toBe(true);
-  expect(window.scrollTo).toHaveBeenCalledTimes(1);
+  expect(window.scrollTo).toHaveBeenNthCalledWith(1, { top: 0, behavior: 'instant' });
+  act(() => jest.advanceTimersByTime(2000));
+  expect(lastScrollTop()).toBeGreaterThan(1200);
+  expect(lastScrollTop()).toBeLessThan(1800);
+  act(() => jest.advanceTimersByTime(2200));
+  expect(lastScrollTop()).toBeCloseTo(3000);
+});
+
+const projectLink = '#/animation/interactions/interactions-8-directional-chair-state-animations';
+
+test('a link to a project glides down from sunrise and opens the project once it arrives', () => {
+  window.history.replaceState(null, '', projectLink);
+  renderScene();
+  expect(window.scrollTo).toHaveBeenNthCalledWith(1, { top: 0, behavior: 'instant' });
+  // The panel previews the linked project on the way down (still hidden at sunrise); the project itself waits.
+  expect(screen.getByRole('button', { name: /8 Directional Chair State Animations/, hidden: true })).toHaveAttribute('aria-pressed', 'true');
+  act(() => jest.advanceTimersByTime(3000));
+  expect(document.querySelector('dialog')).toBeNull();
+  act(() => jest.advanceTimersByTime(1200));
+  expect(lastScrollTop()).toBeCloseTo(3000);
+  expect(document.querySelector('dialog')).toHaveAttribute('open');
+});
+
+test('taking over the glide on a project link opens the project at once', () => {
+  window.history.replaceState(null, '', projectLink);
+  renderScene();
+  act(() => jest.advanceTimersByTime(800));
+  expect(document.querySelector('dialog')).toBeNull();
+  fireEvent.wheel(window);
+  expect(document.querySelector('dialog')).toHaveAttribute('open');
 });

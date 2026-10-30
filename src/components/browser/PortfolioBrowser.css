@@ -1,14 +1,6 @@
-/* Selection, hover and the passing reflection drive the glass through these registered
-   properties. They transition on the row and every layer inherits the moving value, so each
-   layer repaints with its own clip-path rather than splitting onto the GPU. */
-@property --glass-lit { syntax: '<number>'; inherits: true; initial-value: 0; }
-@property --glass-hover { syntax: '<number>'; inherits: true; initial-value: 0; }
-@property --glass-sweep { syntax: '<percentage>'; inherits: true; initial-value: 120%; }
-
 .portfolio-browser {
   --row-outline: polygon(0 0, calc(100% - 26px) 0, 100% 50%, calc(100% - 26px) 100%, 0 100%);
   --tab-outline: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-  --open-outline: polygon(16px 0, 100% 0, calc(100% - 16px) 100%, 16px 100%, 0 50%);
   display: grid;
   grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
   grid-template-rows: minmax(0, 1fr);
@@ -21,38 +13,40 @@
 
 /* Glass, shared by the rows and the tab highlight, lit by the scene's sun at the top right:
    the rim is warm where it faces the sun and cool in shade, light pools in the top-right
-   corner, the bottom left falls into shade, and a mouse carries a small highlight across. */
+   corner, the bottom left falls into shade, and a mouse carries a small highlight across.
+   Selection and hover only fade layers in and out and slide the reflection, so the browser
+   can animate them without restyling the row on every frame. */
 .work-glass {
   --outline: var(--row-outline);
   position: absolute; inset: 0; z-index: -1; pointer-events: none; clip-path: var(--outline);
-  background: linear-gradient(to bottom left,
-    rgb(255 224 180 / calc(.3 + .5 * var(--glass-lit) + .14 * var(--glass-hover))),
-    rgb(255 224 180 / calc(.08 + .14 * var(--glass-lit))) 36%,
-    rgb(141 223 247 / .16) 70%, rgb(141 223 247 / .1));
+  background: linear-gradient(to bottom left, rgb(255 224 180 / .3), rgb(255 224 180 / .08) 36%, rgb(141 223 247 / .16) 70%, rgb(141 223 247 / .1));
 }
-.work-glass::before, .work-glass > span { content: ''; position: absolute; inset: 1px; clip-path: var(--outline); }
-.work-glass::before { background: linear-gradient(124deg, #1c3d5c, #15314e 55%, #23324d); opacity: .92; }
-.work-glass-lit { background: var(--glass-fill); opacity: var(--glass-lit); }
+.work-glass > span { position: absolute; inset: 1px; clip-path: var(--outline); }
+.work-glass > .work-glass-rim { inset: 0; background: linear-gradient(to bottom left, rgb(255 224 180 / .85), rgb(255 224 180 / .24) 36%, transparent 70%); opacity: 0; transition: opacity 420ms var(--ease-soft); }
+.work-glass-pane { background: linear-gradient(124deg, #1c3d5c, #15314e 55%, #23324d); opacity: .92; }
+.work-glass-lit { background: radial-gradient(110% 170% at 100% 0, rgb(255 224 180 / .2), transparent 60%), var(--glass-fill); opacity: 0; transition: opacity 420ms var(--ease-soft); }
 .work-glass-light {
   background:
-    radial-gradient(240px circle at var(--pointer-x, 85%) var(--pointer-y, 0%), rgb(255 236 210 / calc(.16 * var(--glass-hover))), transparent 70%),
-    radial-gradient(110% 170% at 100% 0, rgb(255 224 180 / calc(.06 + .18 * var(--glass-lit) + .05 * var(--glass-hover))), transparent 60%),
+    radial-gradient(110% 170% at 100% 0, rgb(255 224 180 / .06), transparent 60%),
     linear-gradient(to top right, rgb(6 20 36 / .32), transparent 48%),
     linear-gradient(118deg, rgb(175 248 255 / .07) 0 8%, transparent 8% 86%, rgb(255 224 180 / .05) 86%);
 }
+.work-glass-pointer { background: radial-gradient(240px circle at var(--pointer-x, 85%) var(--pointer-y, 0%), rgb(255 236 210 / .16), transparent 70%); opacity: 0; transition: opacity 240ms ease; }
 /* The reflection is a band in an oversized background, so it slides by background-position
    and never needs a moving child of its own: it crosses left to right as a row is selected. */
 .work-glass-glint {
   background: linear-gradient(105deg, transparent 42%, rgb(255 241 220 / .3) 50%, rgb(255 241 220 / .06) 53%, transparent 60%) no-repeat;
   background-size: 250% 100%;
-  background-position: var(--glass-sweep) 0;
+  background-position: 120% 0;
+  transition: background-position 1200ms var(--ease-soft);
 }
 
 /* Category tabs: the lit glass glides to the chosen tab. */
 .work-tabs { position: relative; display: flex; flex-wrap: wrap; gap: 6px clamp(6px, 1vw, 14px); opacity: calc(1 - var(--entry-retreat, 0)); translate: calc(var(--entry-retreat, 0) * -75vw) 0; }
-.work-tab-glass { --glass-lit: 1; position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; filter: drop-shadow(-4px 6px 10px rgb(3 14 26 / .3)); }
+.work-tab-glass { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; filter: drop-shadow(-4px 6px 10px rgb(3 14 26 / .3)); }
 .work-tab-glass .work-glass { --outline: var(--tab-outline); }
-.work-tab-glass.is-placed { transition: transform 560ms var(--ease-glide), width 560ms var(--ease-glide), height 560ms var(--ease-glide); }
+.work-tab-glass .work-glass-rim, .work-tab-glass .work-glass-lit { opacity: 1; }
+.work-tab-glass.is-placed { transition: transform 560ms var(--ease-soft), width 560ms var(--ease-soft), height 560ms var(--ease-soft); }
 .work-tab { position: relative; z-index: 1; border: 0; background: none; padding: 12px clamp(20px, 1.9vw, 30px); color: var(--color-muted); font-size: clamp(14px, 1vw, 17px); font-weight: 500; transition: color 300ms; text-shadow: 0 1px 10px #061524cc; }
 .work-tab:hover, .work-tab[aria-selected='true'] { color: var(--color-text); }
 .work-tab:focus-visible { outline: none; text-decoration: underline 2px var(--color-accent); text-underline-offset: 6px; }
@@ -68,37 +62,42 @@
 /* Changing category: the old content leaves over 160ms, the new unfolds from the left over 720ms. */
 .work-handover { display: flex; flex-direction: column; min-width: 0; min-height: 0; transition: opacity 160ms ease, transform 160ms ease; }
 .work-handover.is-leaving { opacity: 0; transform: translateX(18px); pointer-events: none; }
-.work-arrival { display: flex; flex-direction: column; min-height: 0; animation: work-unfold 720ms var(--ease-glide) both; }
+.work-arrival { display: flex; flex-direction: column; min-height: 0; animation: work-unfold 720ms var(--ease-soft) both; }
 @keyframes work-unfold { from { opacity: 0; transform: translate3d(-45px, 0, 0) scale(.94); } to { opacity: 1; transform: none; } }
 
-/* A project row. Selecting it grows it taller and a little wider, lights its glass, raises
-   the cyan edge and sweeps a reflection across; its number and text only scale, so nothing
-   re-wraps while it moves. */
+/* A project row. Selecting it grows it taller, lights its glass, raises the cyan edge and
+   sweeps a reflection across; its number and text only scale, so nothing re-wraps while it
+   moves. Its shadow is one blurred box under the glass rather than a filter on the row, which
+   would have to be redrawn for every row that moves. */
 .work-row {
   position: relative; isolation: isolate;
   display: grid; grid-template-columns: clamp(40px, 3.6vw, 60px) minmax(0, 1fr); align-items: center; column-gap: clamp(12px, 1.4vw, 24px);
-  width: 97%; min-height: clamp(62px, 9.4svh, 100px);
+  width: 100%; min-height: clamp(62px, 9.4svh, 100px);
   padding: 12px clamp(44px, 3.6vw, 62px) 12px clamp(22px, 2.2vw, 40px);
   border: 0; background: none; color: var(--color-text); text-align: left; cursor: pointer;
-  filter: drop-shadow(-6px 10px 14px rgb(3 14 26 / .3));
-  transition: width 560ms var(--ease-glide), min-height 560ms var(--ease-glide),
-    --glass-lit 420ms ease, --glass-hover 240ms ease, --glass-sweep 1200ms var(--ease-glide);
-  translate: calc(var(--entry-pane-retreat, 0) * -75vw) 0;
-  scale: calc(1 - var(--entry-pane-retreat, 0) * .12);
+  transition: min-height 560ms var(--ease-soft);
 }
-.work-row:hover, .work-row:focus-visible { --glass-hover: 1; }
-.work-row[aria-pressed='true'] { width: 100%; min-height: clamp(84px, 12.6svh, 132px); --glass-lit: 1; --glass-sweep: -20%; }
-.work-row::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--color-accent); box-shadow: 0 0 18px #8ddff7aa; opacity: var(--glass-lit); transform: scaleY(calc(.4 + .6 * var(--glass-lit))); }
+.work-row::before { content: ''; position: absolute; inset: 14% 34px 8% 8px; z-index: -2; border-radius: 6px; box-shadow: -6px 10px 22px rgb(3 14 26 / .45); opacity: .5; transition: opacity 420ms var(--ease-soft); pointer-events: none; }
+.work-row::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--color-accent); box-shadow: 0 0 18px #8ddff7aa; opacity: 0; transform: scaleY(.4); transition: opacity 420ms var(--ease-soft), transform 560ms var(--ease-soft); }
+.work-row:hover .work-glass-pointer, .work-row:focus-visible .work-glass-pointer { opacity: 1; }
+.work-row:hover .work-glass-rim { opacity: .35; }
+.work-row[aria-pressed='true'] { min-height: clamp(84px, 12.6svh, 132px); }
+.work-row[aria-pressed='true']::before, .work-row[aria-pressed='true']::after,
+.work-row[aria-pressed='true'] .work-glass-rim, .work-row[aria-pressed='true'] .work-glass-lit { opacity: 1; }
+.work-row[aria-pressed='true']::after { transform: none; }
+.work-row[aria-pressed='true'] .work-glass-glint { background-position: -20% 0; }
 .work-row:focus-visible { outline: none; }
 .work-row:focus-visible .work-row-title { text-decoration: underline 2px var(--color-accent); text-underline-offset: 5px; }
-.work-row-number { font-size: clamp(20px, 1.9vw, 30px); font-weight: 300; color: var(--color-accent); opacity: calc(.62 + .38 * var(--glass-lit)); font-variant-numeric: tabular-nums; transform: scale(calc(1 + .1 * var(--glass-lit))); transform-origin: left center; }
-.work-row-text { display: grid; gap: 5px; min-width: 0; transform: translateX(calc(4px * var(--glass-lit))) scale(calc(1 + .035 * var(--glass-lit))); transform-origin: left center; }
-.work-row-title { font-size: clamp(16px, 1.4vw, 23px); font-weight: 600; letter-spacing: -.015em; line-height: 1.25; color: #e6f0f6; color: color-mix(in srgb, #cfdfea, #ffffff calc(var(--glass-lit) * 100%)); text-shadow: 0 1px 10px #061524b3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.work-row-number { font-size: clamp(20px, 1.9vw, 30px); font-weight: 300; color: var(--color-accent); opacity: .62; font-variant-numeric: tabular-nums; transform-origin: left center; transition: opacity 420ms var(--ease-soft), transform 560ms var(--ease-soft); }
+.work-row-text { display: grid; gap: 5px; min-width: 0; transform-origin: left center; transition: transform 560ms var(--ease-soft); }
+.work-row-title { font-size: clamp(16px, 1.4vw, 23px); font-weight: 600; letter-spacing: -.015em; line-height: 1.25; color: #cfdfea; text-shadow: 0 1px 10px #061524b3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; transition: color 420ms var(--ease-soft); }
+.work-row[aria-pressed='true'] .work-row-number { opacity: 1; transform: scale(1.1); }
+.work-row[aria-pressed='true'] .work-row-text { transform: translateX(4px) scale(1.035); }
+.work-row[aria-pressed='true'] .work-row-title { color: #fff; }
 .work-row-path { font-size: clamp(12px, .9vw, 15px); color: var(--color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* The preview card shares the expanded pane's glass and outline, so View grows it in place. */
 .work-preview {
-  --shard-outline: polygon(0% 2.5%, 1.8% 0%, 97.5% 0%, 100% 3.5%, 98.2% 100%, 1% 98.5%);
   --stage-gap: clamp(12px, 1.8svh, 22px);
   container-type: inline-size;
   position: relative; isolation: isolate; flex: 0 1 auto;
@@ -113,7 +112,7 @@
   position: absolute; inset: 1px; z-index: 2; pointer-events: none; clip-path: var(--shard-outline);
   background: linear-gradient(105deg, transparent 42%, rgb(255 241 220 / .16) 50%, rgb(255 241 220 / .04) 53%, transparent 60%) no-repeat;
   background-size: 250% 100%;
-  animation: work-preview-sweep 1100ms var(--ease-glide) both;
+  animation: work-preview-sweep 1100ms var(--ease-soft) both;
 }
 @keyframes work-preview-sweep { from { background-position: 120% 0; } to { background-position: -20% 0; } }
 /* The media area spans the card at the media's own proportions (--media-ratio, measured as
@@ -122,7 +121,7 @@
 .work-preview-stage {
   --stage-height: max(48px, calc(100cqw / var(--media-ratio, 1.7778)));
   flex: 0 1 auto; height: var(--stage-height); min-height: min(120px, var(--stage-height)); margin-bottom: var(--stage-gap);
-  transition: height 560ms var(--ease-glide), min-height 560ms var(--ease-glide), margin-bottom 560ms var(--ease-glide), opacity 400ms ease;
+  transition: height 560ms var(--ease-soft), min-height 560ms var(--ease-soft), margin-bottom 560ms var(--ease-soft), opacity 400ms ease;
 }
 .work-preview-stage.is-empty { height: 0; min-height: 0; margin-bottom: 0; opacity: 0; }
 /* Media sits on the glass with no frame of its own, lifted by a soft shadow. Video fills its
@@ -131,10 +130,11 @@
 .work-preview-media { position: relative; width: 100%; height: 100%; overflow: hidden; box-shadow: 0 10px 22px rgb(4 16 28 / .42); transition: box-shadow 400ms ease; }
 .work-preview-media.is-image { overflow: visible; box-shadow: none; }
 .work-preview-image { filter: drop-shadow(0 8px 18px rgb(4 16 28 / .45)); }
-/* The incoming media settles in over the outgoing one, which fades away beneath it. */
-.work-preview-layer { position: absolute; inset: 0; animation: work-layer-in 520ms var(--ease-glide) backwards; transition: opacity 520ms ease, transform 520ms var(--ease-glide); }
-.work-preview-layer.is-leaving { opacity: 0; transform: scale(1.015); }
-@keyframes work-layer-in { from { opacity: 0; transform: scale(1.04); } }
+/* The incoming media waits unseen until it can actually show, with the outgoing media held in
+   full, then settles in over it while the outgoing one fades away beneath. */
+.work-preview-layer { position: absolute; inset: 0; transition: opacity 560ms var(--ease-soft), transform 640ms var(--ease-soft); }
+.work-preview-layer.is-waiting { opacity: 0; transform: scale(1.03); }
+.work-preview-layer.is-leaving { opacity: 0; transform: scale(1.01); }
 .work-preview-video, .work-preview-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .work-preview-video { object-fit: cover; }
 .work-preview-youtube { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
@@ -143,25 +143,19 @@
 /* The outgoing title lifts away as the incoming one rises into the same place. The title keeps
    room for two lines, so a shorter or longer one never moves the card's edge. */
 .work-preview-heading { display: grid; min-width: 0; }
-.work-preview-label { grid-area: 1 / 1; min-width: 0; animation: work-label-in 520ms var(--ease-glide) backwards; transition: opacity 260ms ease, transform 420ms var(--ease-glide); }
+.work-preview-label { grid-area: 1 / 1; min-width: 0; animation: work-label-in 520ms var(--ease-soft) backwards; transition: opacity 260ms ease, transform 420ms var(--ease-soft); }
 .work-preview-label.is-leaving { opacity: 0; transform: translateY(-10px); pointer-events: none; }
 @keyframes work-label-in { from { opacity: 0; transform: translateY(12px); } }
 .work-preview-title { margin: 0; min-height: 2.4em; font-size: clamp(20px, 2.1vw, 40px); font-weight: 500; letter-spacing: -.035em; line-height: 1.2; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .work-preview-path { margin: 4px 0 0; font-size: clamp(12px, .95vw, 16px); color: var(--color-muted); }
 .work-preview.is-entry-source [data-morph-title] { visibility: hidden; }
-.work-open { position: relative; isolation: isolate; flex: none; display: inline-flex; align-items: center; gap: 12px; border: 0; background: none; color: var(--color-text); padding: clamp(12px, 1.6svh, 18px) clamp(24px, 2vw, 38px); font-size: clamp(13px, 1vw, 17px); font-weight: 500; }
-.work-open::before, .work-open::after { content: ''; position: absolute; inset: 0; z-index: -1; clip-path: var(--open-outline); }
-.work-open::before { background: var(--glass-fill); filter: brightness(1.5) saturate(1.2); }
-.work-open::after { background: linear-gradient(110deg, #8ddff73d, transparent 65%); opacity: 0; transition: opacity 200ms; }
-.work-open:hover::after { opacity: 1; }
-.work-open span { color: var(--color-accent); transition: translate 200ms; }
-.work-open:hover span { translate: 4px 0; }
+.work-open { flex: none; padding: clamp(12px, 1.6svh, 16px) clamp(24px, 2vw, 34px); font-size: clamp(13px, 1vw, 16px); }
 
 /* Portrait phones and tablets: one column, and the selected row opens to show its preview.
    The row above already names the project, so the card keeps one title line beside the button. */
 .portfolio-browser.is-stacked { display: flex; flex-direction: column; }
 .is-stacked .work-index { flex: 1 1 auto; }
-.work-inline { display: grid; grid-template-rows: minmax(0, 1fr); animation: work-inline-open 560ms var(--ease-glide) backwards; transition: grid-template-rows 560ms var(--ease-glide), opacity 360ms ease; }
+.work-inline { display: grid; grid-template-rows: minmax(0, 1fr); animation: work-inline-open 560ms var(--ease-soft) backwards; transition: grid-template-rows 560ms var(--ease-soft), opacity 360ms ease; }
 .work-inline.is-closing { grid-template-rows: minmax(0, 0fr); opacity: 0; }
 .work-inline-body { min-height: 0; overflow: hidden; }
 @keyframes work-inline-open { from { grid-template-rows: minmax(0, 0fr); opacity: 0; } }

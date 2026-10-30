@@ -1,6 +1,8 @@
 export const DURATION = 720;
-export const FRAME = [[0, .025], [.018, 0], [.975, 0], [1, .035], [.982, 1], [.01, .985]];
-export const SHARD = [[0, .18], [.06, 0], [.94, .03], [1, .8], [.96, 1], [.02, .94]];
+// The expanded pane is a plain rectangle, as six points so a source's outline can blend into it
+// point by point (tokens.css --shard-outline). A source without an outline uses the same.
+export const FRAME = [[0, 0], [0, 0], [1, 0], [1, 0], [1, 1], [0, 1]];
+export const SHARD = FRAME;
 export const ease = (progress, start, end) => {
   const t = Math.max(0, Math.min(1, (progress - start) / (end - start)));
   return t * t * (3 - 2 * t);
@@ -29,10 +31,24 @@ function outline(source) {
   return matches?.length === 6 ? matches.map(pair => pair.split(/\s+/).map(value => parseFloat(value) / 100)) : SHARD;
 }
 
+// The elements that fade and slide away while an entry is open. Each reads --entry-retreat
+// itself, so a frame restyles these few instead of everything under the page's root.
+const RETREATING = '.site-header, .site-footer, .work-tabs, .work-heading';
+
 export function createEntryTransition({ dialog, heading, viewport, back, source, origin, onExited }) {
-  const scene = document.querySelector('.scroll-scene');
-  const layout = document.querySelector('.site-layout');
+  const retreating = [...document.querySelectorAll(RETREATING)];
   const siblings = [...document.querySelectorAll('.work-row')].filter(pane => pane !== source);
+  // Writes a style only when its value changes: even an unchanged write costs a style pass.
+  const written = new Map();
+  const set = (element, property, value) => {
+    if (!element) return;
+    if (!written.has(element)) written.set(element, {});
+    const text = String(value);
+    if (written.get(element)[property] === text) return;
+    written.get(element)[property] = text;
+    if (property.startsWith('--')) element.style.setProperty(property, text);
+    else element.style[property] = text;
+  };
   const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
   let destination = targetRect();
   const fallback = { left: (window.innerWidth - 340) / 2, top: (window.innerHeight - 112) / 2, width: 340, height: 112 };
@@ -58,38 +74,44 @@ export function createEntryTransition({ dialog, heading, viewport, back, source,
 
   const paint = () => {
     const { rect, clip, morph, reveal, retreat } = transitionAt(progress, sourceRect, destination, points);
-    for (const key of ['left', 'top', 'width', 'height']) dialog.style[key] = `${rect[key]}px`;
-    dialog.style.clipPath = clip;
-    dialog.style.setProperty('--pane-outline', clip);
-    dialog.style.setProperty('--content-reveal', reveal);
+    for (const key of ['left', 'top', 'width', 'height']) set(dialog, key, `${rect[key]}px`);
+    set(dialog, 'clipPath', clip);
+    set(dialog, '--pane-outline', clip);
     // The card hands over to the pane: its media fades out while the same glass fades in over it.
     const handoff = ease(progress, 0, .3);
-    dialog.style.setProperty('--surface-opacity', handoff);
-    if (source) source.style.opacity = String(1 - handoff);
-    scene?.style.setProperty('--entry-travel', progress);
-    scene?.style.setProperty('--entry-retreat', retreat);
-    scene?.style.setProperty('--entry-content-reveal', reveal);
-    layout?.style.setProperty('--entry-retreat', retreat);
-    siblings.forEach((pane, index) => pane.style.setProperty('--entry-pane-retreat', ease(progress, index * .022, .48 + index * .022)));
+    set(dialog, '--surface-opacity', handoff);
+    set(source, 'opacity', 1 - handoff);
+    retreating.forEach(element => set(element, '--entry-retreat', retreat));
+    // Each row moves by its own transform, which restyles only that row.
+    siblings.forEach((pane, index) => {
+      const away = ease(progress, index * .022, .48 + index * .022);
+      set(pane, 'transform', away ? `translateX(${away * -75}vw) scale(${1 - away * .12})` : '');
+    });
     const inset = Math.min(70, Math.max(24, destination.width * .045));
     const font = Math.min(46, Math.max(26, destination.width * .033));
     const endTop = window.innerWidth <= 850 ? 66 : 32;
     const reserve = window.innerWidth <= 850 ? inset : 160;
     const startWidth = sourceRect.width - sourceLeft - sourceRight;
-    heading.style.left = `${lerp(sourceLeft, inset, morph)}px`;
-    heading.style.top = `${lerp(sourceTop, endTop, morph)}px`;
-    heading.style.width = `${lerp(startWidth, destination.width - inset - reserve, morph)}px`;
-    heading.style.fontSize = `${lerp(sourceFont * labelScale, font, morph)}px`;
-    const bodyTop = endTop + heading.offsetHeight + 30;
-    viewport.style.left = `${inset}px`;
-    viewport.style.right = `${inset}px`;
-    viewport.style.top = `${bodyTop}px`;
-    viewport.style.height = `${Math.max(0, destination.height - bodyTop - inset) * reveal}px`;
-    viewport.style.overflowY = reveal === 1 ? 'auto' : 'hidden';
-    viewport.inert = reveal < 1;
-    back.style.opacity = reveal > .8 ? 1 : 0;
-    back.style.pointerEvents = reveal > .8 ? 'auto' : 'none';
-    back.disabled = reveal <= .8;
+    set(heading, 'left', `${lerp(sourceLeft, inset, morph)}px`);
+    set(heading, 'top', `${lerp(sourceTop, endTop, morph)}px`);
+    set(heading, 'width', `${lerp(startWidth, destination.width - inset - reserve, morph)}px`);
+    set(heading, 'fontSize', `${lerp(sourceFont * labelScale, font, morph)}px`);
+    // The note is laid out once at the pane's final width, rather than re-flowing every frame as
+    // the pane grows; it stays hidden until the reveal, so its own position is only read then.
+    set(viewport, 'left', `${inset}px`);
+    set(viewport, 'width', `${Math.max(0, destination.width - inset * 2)}px`);
+    if (reveal > 0) {
+      const bodyTop = endTop + heading.offsetHeight + 30;
+      set(viewport, 'top', `${bodyTop}px`);
+      set(viewport, 'height', `${Math.max(0, destination.height - bodyTop - inset) * reveal}px`);
+    } else set(viewport, 'height', '0px');
+    const hidden = reveal < 1;
+    const returning = reveal > .8;
+    set(viewport, 'overflowY', hidden ? 'hidden' : 'auto');
+    if (viewport.inert !== hidden) viewport.inert = hidden;
+    set(back, 'opacity', returning ? 1 : 0);
+    set(back, 'pointerEvents', returning ? 'auto' : 'none');
+    if (back.disabled === returning) back.disabled = !returning;
   };
 
   const finishClosing = () => {
@@ -150,9 +172,8 @@ export function createEntryTransition({ dialog, heading, viewport, back, source,
       cancelAnimationFrame(frame);
       source?.classList.remove('is-entry-source');
       source?.style.removeProperty('opacity');
-      siblings.forEach(pane => pane.style.removeProperty('--entry-pane-retreat'));
-      ['--entry-travel', '--entry-retreat', '--entry-content-reveal'].forEach(name => scene?.style.removeProperty(name));
-      layout?.style.removeProperty('--entry-retreat');
+      siblings.forEach(pane => pane.style.removeProperty('transform'));
+      retreating.forEach(element => element.style.removeProperty('--entry-retreat'));
       window.removeEventListener('resize', resize);
       preference.removeEventListener?.('change', preferenceChanged);
     },

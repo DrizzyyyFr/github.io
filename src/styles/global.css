@@ -26,6 +26,37 @@ button, a { -webkit-tap-highlight-color: transparent; }
   background: var(--color-accent);
 }
 .skip-link:focus { top: var(--space-4); }
+
+/* One button for the whole site, cut from the same sunlit glass as the shards: a rim that
+   catches the sun, the glass with its sunlit corner and shade, and a reflection that crosses
+   it on hover. Label buttons are a slanted pane; .is-round makes an icon button. Each layer
+   carries its own clip-path, and focus shows as a glow rather than a rectangle. */
+.glass-button {
+  --button-outline: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+  position: relative; isolation: isolate;
+  display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 12px 30px; border: 0; background: none;
+  color: var(--color-text); font-weight: 500; text-decoration: none; cursor: pointer;
+  filter: drop-shadow(-4px 7px 12px rgb(3 14 26 / .32));
+  transition: transform 220ms var(--ease-glide);
+}
+.glass-button::before, .glass-button::after { content: ''; position: absolute; z-index: -1; clip-path: var(--button-outline); pointer-events: none; }
+.glass-button::before { inset: 0; background: var(--glass-edge); }
+.glass-button::after {
+  inset: 1px;
+  background:
+    linear-gradient(105deg, transparent 42%, rgb(255 241 220 / .32) 50%, rgb(255 241 220 / .07) 53%, transparent 60%) 120% 0 / 250% 100% no-repeat,
+    radial-gradient(130% 200% at 100% 0, rgb(255 224 180 / .24), transparent 60%),
+    linear-gradient(to top right, rgb(6 20 36 / .3), transparent 50%),
+    var(--glass-fill);
+  transition: background-position 900ms var(--ease-glide);
+}
+.glass-button:hover::after, .glass-button:focus-visible::after { background-position: -20% 0, 0 0, 0 0, 0 0; }
+.glass-button:active { transform: translateY(1px) scale(.97); }
+.glass-button:focus-visible { outline: none; filter: drop-shadow(0 0 7px rgb(141 223 247 / .7)) drop-shadow(-4px 7px 12px rgb(3 14 26 / .32)); }
+.glass-button-icon { color: var(--color-accent); transition: translate 220ms var(--ease-glide); }
+.glass-button:hover .glass-button-icon { translate: 4px 0; }
+.glass-button.is-round { --button-outline: circle(50%); width: 44px; height: 44px; padding: 0; gap: 0; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; animation: none !important; }

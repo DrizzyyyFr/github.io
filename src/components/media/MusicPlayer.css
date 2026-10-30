@@ -27,10 +27,10 @@
 .music-player button:hover { color: var(--color-text); }
 .music-player button:disabled { opacity: .35; cursor: default; }
 .music-player button svg { width: 17px; height: 17px; }
-.music-player :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; border-radius: 4px; }
+.music-player :focus-visible:not(.glass-button) { outline: 2px solid var(--color-accent); outline-offset: 3px; border-radius: 4px; }
 .music-player-main { display: flex; align-items: center; gap: 10px; }
-.music-player .music-play { width: 38px; height: 38px; border-radius: 50%; background: var(--color-accent); color: #183a50; }
-.music-player .music-play:hover { background: #b1eafa; color: #102c40; }
+.music-player .music-play { width: 38px; height: 38px; color: var(--color-accent); }
+.music-player .music-play:hover { color: var(--color-text); }
 .music-play svg { width: 21px !important; height: 21px !important; }
 .music-track { flex: 1; min-width: 0; }
 .music-track select { display: block; width: 100%; padding: 0 12px 0 0; border: 0; border-radius: 0; color: var(--color-text); font: 500 13px/1.6 var(--font-body); background: transparent; cursor: pointer; text-overflow: ellipsis; }

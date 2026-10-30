@@ -4,21 +4,21 @@ import PortfolioBrowser from '../../components/browser/PortfolioBrowser';
 import EntryOverlay from '../work/EntryOverlay';
 import OceanScene from './OceanScene';
 import { sceneAt } from './sceneTimeline';
-import { createDiveSound } from './diveSound';
 import './HomePage.css';
 
-// The introduction's pose on the scene's scroll timeline, and how long a fresh visit takes to glide there.
+// The introduction's pose on the scene's scroll timeline, and how long a visit takes to glide
+// from sunrise to where its link points.
 const INTRODUCTION = 1 / 3;
 const GLIDE_MS = 4000;
-// How far the descent must go before the view counts as under the water: the rising waterline
-// has crossed the middle of the screen.
-const DIVE_DEPTH = .5;
+// The pose a link lands on: the introduction for the home page and #about, the work panel for
+// #work and any category or project link.
+const poseFor = hash => (!hash || hash === '#/' || hash === '#about' ? INTRODUCTION : 1);
 
 export default function HomePage({ route }) {
   const scene = useRef(null);
   const origin = useRef(null);
   const oceanState = useRef({ ...sceneAt(0), reducedMotion: false });
-  const [visible, setVisible] = useState({ intro: false, menu: false, cue: true });
+  const [visible, setVisible] = useState({ intro: false, menu: false, work: false, cue: true });
 
   useEffect(() => {
     const element = scene.current;
@@ -27,17 +27,10 @@ export default function HomePage({ route }) {
     let target = 0;
     let progress = 0;
     let previousTime;
-    const dive = createDiveSound();
-    // Unknown until the first paint, so a visit that opens under the water stays silent; only a
-    // crossing made afterwards counts as a dive.
-    let underwater;
 
     const paint = () => {
       const state = sceneAt(progress);
       oceanState.current = { ...state, reducedMotion: reduced.matches };
-      const under = state.submerge >= DIVE_DEPTH;
-      if (underwater !== undefined && under !== underwater) dive.crossed(under);
-      underwater = under;
       element.style.setProperty('--progress', target);
       element.style.setProperty('--intro-opacity', state.introOpacity);
       element.style.setProperty('--intro-x', `${state.introOffset}vw`);
@@ -47,8 +40,9 @@ export default function HomePage({ route }) {
       const crestClearance = 4 * Math.sin(state.submerge * Math.PI);
       element.style.setProperty('--waterline', `${(1 - state.waterline) * 100 + crestClearance}%`);
       element.dataset.phase = progress < .17 ? 'sunrise' : progress < .56 ? 'about' : progress < .71 ? 'sunset' : 'underwater';
-      const next = { intro: state.introOpacity > .01, menu: state.navigation > .94, cue: state.cueOpacity > .1 };
-      setVisible(current => current.intro === next.intro && current.menu === next.menu && current.cue === next.cue ? current : next);
+      // `work` is any sight of the work panel, so its preview media starts loading as it appears.
+      const next = { intro: state.introOpacity > .01, menu: state.navigation > .94, work: state.navigation > .01, cue: state.cueOpacity > .1 };
+      setVisible(current => Object.keys(next).every(key => current[key] === next[key]) ? current : next);
       element.dispatchEvent(new Event('ocean-frame'));
     };
     const tick = time => {
@@ -74,9 +68,10 @@ export default function HomePage({ route }) {
     const navigate = (initial = false) => {
       const hash = window.location.hash;
       let destination;
-      if (hash === '#/' || !hash) destination = 0;
+      // Every visit starts at sunrise, whatever it links to; the arrival glide carries it there.
+      if (initial || hash === '#/' || !hash) destination = 0;
       else if (hash === '#about') destination = INTRODUCTION;
-      else if (hash === '#work' || initial) destination = 1;
+      else if (hash === '#work') destination = 1;
       if (destination !== undefined) {
         const top = element.getBoundingClientRect().top + window.scrollY;
         const travel = Math.max(0, element.offsetHeight - window.innerHeight);
@@ -93,7 +88,6 @@ export default function HomePage({ route }) {
     reduced.addEventListener?.('change', measure);
     return () => {
       cancelAnimationFrame(frame);
-      dive.destroy();
       window.removeEventListener('scroll', measure);
       window.removeEventListener('resize', measure);
       window.removeEventListener('hashchange', hashChanged);
@@ -101,40 +95,49 @@ export default function HomePage({ route }) {
     };
   }, []);
 
-  // A fresh visit glides from sunrise down to the introduction over four seconds, easing in
-  // and out. A link to a section or project keeps its own pose, and any wheel, touch, key,
-  // press or navigation hands the page back to the visitor at once.
+  // Every visit glides from sunrise to where its link points over four seconds, easing in and
+  // out: the introduction for the home page and #about, the work panel for #work and any
+  // category or project link. A linked project opens once the glide arrives, from its preview
+  // card. Any wheel, touch, key, press or navigation hands the page back to the visitor at once,
+  // which also counts as arriving.
+  const [arrived, setArrived] = useState(false);
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash && hash !== '#/') return undefined;
     const element = scene.current;
-    const introduction = () => element.getBoundingClientRect().top + window.scrollY
-      + Math.max(0, element.offsetHeight - window.innerHeight) * INTRODUCTION;
+    const pose = poseFor(window.location.hash);
+    const destination = () => element.getBoundingClientRect().top + window.scrollY
+      + Math.max(0, element.offsetHeight - window.innerHeight) * pose;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      window.scrollTo({ top: introduction(), behavior: 'instant' });
+      window.scrollTo({ top: destination(), behavior: 'instant' });
+      setArrived(true);
       return undefined;
     }
     const takeovers = ['wheel', 'touchstart', 'keydown', 'pointerdown', 'hashchange'];
     let frame = 0;
     let start;
     let from;
-    const stop = () => {
+    // Cancelling is not arriving: StrictMode's rehearsal unmount must not open a linked project.
+    const cancel = () => {
       cancelAnimationFrame(frame);
-      takeovers.forEach(name => window.removeEventListener(name, stop));
+      takeovers.forEach(name => window.removeEventListener(name, arrive));
     };
+    function arrive() {
+      cancel();
+      setArrived(true);
+    }
     const step = time => {
       if (start === undefined) { start = time; from = window.scrollY; }
       const t = Math.min(1, (time - start) / GLIDE_MS);
       const eased = t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
-      // The target is read every frame, so a resize or late layout still lands on the name.
-      window.scrollTo({ top: from + (introduction() - from) * eased, behavior: 'instant' });
+      // The target is read every frame, so a resize or late layout still lands on the pose.
+      window.scrollTo({ top: from + (destination() - from) * eased, behavior: 'instant' });
       if (t < 1) frame = requestAnimationFrame(step);
-      else stop();
+      else arrive();
     };
-    takeovers.forEach(name => window.addEventListener(name, stop, { passive: true }));
+    takeovers.forEach(name => window.addEventListener(name, arrive, { passive: true }));
     frame = requestAnimationFrame(step);
-    return stop;
+    return cancel;
   }, []);
+  const overlayRoute = arrived ? route : { ...route, entry: undefined };
 
   return <main id="main" className="home-page">
     <div ref={scene} className="scroll-scene">
@@ -150,15 +153,15 @@ export default function HomePage({ route }) {
             <p className="intro-summary">Where I share my animation work, technical systems,<br className="desktop-break" /> and the ideas behind them.</p>
           </div>
         </section>
-        <a className="explore-cue" href="#about" aria-label="Scroll to introduction" aria-hidden={!visible.cue} tabIndex={visible.cue ? 0 : -1}><span className="explore-cue-arrow" aria-hidden="true">&darr;</span></a>
+        <a className="explore-cue" href="#about" aria-label="Scroll to introduction" aria-hidden={!visible.cue} tabIndex={visible.cue ? 0 : -1}><span className="glass-button is-round explore-cue-arrow" aria-hidden="true">&darr;</span></a>
         <div className="navigation-depth"><section className="work-section" aria-labelledby="work-title" aria-hidden={!visible.menu} inert={!visible.menu ? true : undefined}>
           <div className="work-heading"><h2 id="work-title">Work<span>.</span></h2></div>
-          <PortfolioBrowser categoryId={route.category?.id} subcategoryId={route.explicitSubcategoryId} entryId={route.entry?.id}
+          <PortfolioBrowser active={visible.work} categoryId={route.category?.id} subcategoryId={route.explicitSubcategoryId} entryId={route.entry?.id}
             onOpen={element => { origin.current = { element, rect: element?.getBoundingClientRect(), focus: document.activeElement }; }} />
         </section></div>
         <div className="scene-progress" aria-hidden="true"><span /></div>
       </div>
     </div>
-    <EntryOverlay route={route} origin={origin} />
+    <EntryOverlay route={overlayRoute} origin={origin} />
   </main>;
 }

@@ -32,38 +32,47 @@ function Handover({ id, className, children }) {
 const mediaRatios = new Map();
 const MEDIA_RATIO = { fallback: 16 / 9, min: .6, max: 14 };
 
-function PreviewMedia({ media, onRatio }) {
+// Media reports its natural proportions as soon as it knows them, and that it is ready once
+// it can actually be seen, so the card never fades in an empty or black frame.
+function PreviewMedia({ media, onRatio, onReady }) {
   const still = useMediaQuery('(prefers-reduced-motion: reduce)');
   // The YouTube player cannot report its video's size across origins; its videos are 16:9.
   const youtube = media.kind === 'youtube';
   useEffect(() => { if (youtube) onRatio(16 / 9); }, [youtube, onRatio]);
   // The preview is a silent backdrop: it takes no pointer or focus, so the card stays the control.
   if (youtube) return <iframe className="work-preview-youtube" src={youtubePreviewUrl(media.id, !still)} title="Project video preview"
-    allow="autoplay; encrypted-media; picture-in-picture" tabIndex={-1} aria-hidden="true" />;
+    allow="autoplay; encrypted-media; picture-in-picture" tabIndex={-1} aria-hidden="true" onLoad={onReady} />;
   if (media.kind === 'video') return <video className="work-preview-video" src={media.src} muted loop playsInline autoPlay={!still}
-    preload={still ? 'metadata' : 'auto'} aria-hidden="true" tabIndex={-1}
+    preload="auto" aria-hidden="true" tabIndex={-1} onCanPlay={onReady}
     onLoadedMetadata={event => onRatio(event.currentTarget.videoWidth / event.currentTarget.videoHeight)} />;
   return <img className="work-preview-image" src={media.src} alt={media.alt}
-    onLoad={event => onRatio(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight)} />;
+    onLoad={event => { onRatio(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight); onReady(); }} />;
 }
 
 // Keeps outgoing values on screen while the incoming one arrives, so a swap crossfades
 // instead of cutting. The current value comes last; older ones are marked leaving and
-// dropped once their fade has had time to finish.
+// dropped once their fade has had time to finish. While `hold` is set, the outgoing values
+// stay fully shown, for an incoming one that cannot be seen yet.
 const FADE_MS = 520;
-function useCrossfade(key, value) {
+function useCrossfade(key, value, hold = false) {
   const serial = useRef(1);
   const [items, setItems] = useState(() => [{ id: 1, key, value, leaving: false }]);
   useEffect(() => {
     setItems(previous => previous[previous.length - 1].key === key ? previous
       : [...previous.map(item => ({ ...item, leaving: true })), { id: ++serial.current, key, value, leaving: false }]);
-    const timer = setTimeout(() => setItems(previous => previous.filter(item => !item.leaving)), reducedMotion() ? 0 : FADE_MS);
-    return () => clearTimeout(timer);
     // A new value only ever arrives with a new key.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+  useEffect(() => {
+    if (hold) return undefined;
+    const timer = setTimeout(() => setItems(previous => previous.some(item => item.leaving) ? previous.filter(item => !item.leaving) : previous),
+      reducedMotion() ? 0 : FADE_MS);
+    return () => clearTimeout(timer);
+  }, [key, hold]);
   return items;
 }
+// How long the card waits for new media that never reports ready before showing it anyway.
+const READY_TIMEOUT_MS = 2500;
 
 // True while active and for a moment after, so a closing element can animate away first.
 function useLinger(active) {
@@ -78,15 +87,26 @@ function useLinger(active) {
 
 // One card that stays put while its project changes: the media and the title crossfade, the
 // media area folds away for a project without any, and a reflection crosses the glass.
-function ProjectPreview({ project, onOpen }) {
+// Nothing loads until the panel is `active` on screen, and only the shown project's media.
+function ProjectPreview({ project, active, onOpen }) {
   const card = useRef(null);
   const { category, subcategory, entry, path } = project;
   const media = projectPreview(entry);
-  const layers = useCrossfade(entry.id, media);
+  const src = media?.src;
+  const [readySrc, setReadySrc] = useState(null);
+  // Incoming media that cannot be seen yet keeps the outgoing media fully shown. Leaving the
+  // screen unloads the media, so coming back waits for it again and fades it in.
+  const waiting = Boolean(src) && active && readySrc !== src;
+  useEffect(() => { if (!active) setReadySrc(null); }, [active]);
+  useEffect(() => {
+    if (!waiting) return undefined;
+    const timer = setTimeout(() => setReadySrc(src), READY_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [waiting, src]);
+  const layers = useCrossfade(entry.id, media, waiting);
   const labels = useCrossfade(entry.id, { title: entry.title, path });
   // The media area follows the current media's proportions. Until new media reports its own,
   // the area keeps its present shape, then eases to the new one rather than jumping.
-  const src = media?.src;
   const [ratio, setRatio] = useState(() => mediaRatios.get(src) || MEDIA_RATIO.fallback);
   useEffect(() => { if (mediaRatios.has(src)) setRatio(mediaRatios.get(src)); }, [src]);
   const measured = from => value => {
@@ -104,9 +124,12 @@ function ProjectPreview({ project, onOpen }) {
     <span key={entry.id} className="work-preview-glint" aria-hidden="true" />
     <div className={`work-preview-stage${media ? '' : ' is-empty'}`} style={{ '--media-ratio': ratio }}>
       <div className={`work-preview-media${media?.kind === 'image' ? ' is-image' : ''}`}>
-        {layers.filter(layer => layer.value).map(layer => <div key={layer.id} className={`work-preview-layer${layer.leaving ? ' is-leaving' : ''}`}>
-          <PreviewMedia media={layer.value} onRatio={measured(layer.value.src)} />
-        </div>)}
+        {active && layers.filter(layer => layer.value).map(layer => {
+          const state = layer.leaving ? (waiting ? '' : ' is-leaving') : (waiting ? ' is-waiting' : '');
+          return <div key={layer.id} className={`work-preview-layer${state}`}>
+            <PreviewMedia media={layer.value} onRatio={measured(layer.value.src)} onReady={() => setReadySrc(layer.value.src)} />
+          </div>;
+        })}
       </div>
     </div>
     <div className="work-preview-meta">
@@ -116,16 +139,18 @@ function ProjectPreview({ project, onOpen }) {
           <p className="work-preview-path">{label.value.path}</p>
         </div>)}
       </div>
-      <button type="button" className="work-open" onClick={open}>View <span aria-hidden="true">&rarr;</span></button>
+      <button type="button" className="glass-button work-open" onClick={open}>View <span className="glass-button-icon" aria-hidden="true">&rarr;</span></button>
     </div>
   </section>;
 }
 
 // The glass of a row or of the tab highlight: a rim that catches the sun, a resting and a lit
-// pane, the sun's light and shade, and a reflection that sweeps across on selection. Every
-// layer is CSS and carries its own clip-path.
+// pane, the sun's light and shade, a highlight that follows the mouse, and a reflection that
+// sweeps across on selection. Every layer carries its own clip-path, and selection only fades
+// and moves layers, so the browser can run it without restyling the row on every frame.
 const Glass = () => <span className="work-glass" aria-hidden="true">
-  <span className="work-glass-lit" /><span className="work-glass-light" /><span className="work-glass-glint" />
+  <span className="work-glass-rim" /><span className="work-glass-pane" /><span className="work-glass-lit" />
+  <span className="work-glass-light" /><span className="work-glass-pointer" /><span className="work-glass-glint" />
 </span>;
 
 // A mouse over the glass carries a small sun highlight with it. It writes the pointer
@@ -139,7 +164,7 @@ const followPointer = event => {
 
 // One project as a glass row. Selecting it grows the row, lights its glass and sweeps a
 // reflection across it; its text only scales, so nothing re-wraps while it moves.
-function ProjectRow({ project, index, current, stacked, onPreview, onOpen }) {
+function ProjectRow({ project, index, current, stacked, active, onPreview, onOpen }) {
   const inline = useLinger(current);
   return <li className={`work-project${current ? ' is-selected' : ''}`}>
     <button type="button" className="work-row" aria-pressed={current} onClick={() => onPreview(project)} onPointerMove={followPointer}>
@@ -152,7 +177,7 @@ function ProjectRow({ project, index, current, stacked, onPreview, onOpen }) {
     </button>
     {/* On phones the preview opens under its row, and folds away again when another is chosen. */}
     {stacked && inline && <div className={`work-inline${current ? '' : ' is-closing'}`} inert={current ? undefined : true}>
-      <div className="work-inline-body"><ProjectPreview project={project} onOpen={onOpen} /></div>
+      <div className="work-inline-body"><ProjectPreview project={project} active={active} onOpen={onOpen} /></div>
     </div>}
   </li>;
 }
@@ -207,7 +232,8 @@ function useMoreBelow(list, key) {
   }, [list, key]);
 }
 
-export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, onOpen }) {
+// `active` is whether the panel is on screen; preview media only loads while it is.
+export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, onOpen, active = true }) {
   const list = useRef(null);
   const stacked = useMediaQuery('(max-width: 850px) and (orientation: portrait)');
   const categories = portfolio.categories;
@@ -281,13 +307,13 @@ export default function PortfolioBrowser({ categoryId, subcategoryId, entryId, o
         <Handover id={category.id} className="work-list-handover">
           <ul className="work-project-list" onKeyDown={rowKeys}>
             {projects.map((project, index) => <ProjectRow key={project.entry.id} project={project} index={index} current={project === selected}
-              stacked={stacked} onPreview={preview} onOpen={onOpen} />)}
+              stacked={stacked} active={active} onPreview={preview} onOpen={onOpen} />)}
           </ul>
         </Handover>
       </div>
     </div>
     {!stacked && <Handover id={category.id} className="work-preview-handover">
-      <ProjectPreview project={selected} onOpen={onOpen} />
+      <ProjectPreview project={selected} active={active} onOpen={onOpen} />
     </Handover>}
   </div>;
 }

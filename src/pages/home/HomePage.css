@@ -8,8 +8,6 @@
   --intro-x: -18vw;
   --nav-opacity: 0;
   --cue-opacity: 1;
-  --entry-travel: 0;
-  --entry-retreat: 0;
   --waterline: 50%;
   --name-size: clamp(36px, min(9.3vw, 15svh), 180px);
   --name-gap: clamp(10px, 1.8svh, 22px);
@@ -30,7 +28,7 @@
 .intro-summary { color: #c5dde8; font-size: clamp(12px, 1vw, 16px); line-height: 1.8; margin: 0; }
 .explore-cue { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); opacity: var(--cue-opacity); }
 .explore-cue[aria-hidden='true'] { pointer-events: none; }
-.explore-cue-arrow { width: 44px; height: 44px; border: 1px solid #d7eff633; border-radius: 50%; display: grid; place-items: center; color: #e2f3f8; }
+.explore-cue-arrow { color: #e2f3f8; }
 .navigation-depth { position: absolute; inset: 0; clip-path: inset(max(0%, var(--waterline)) 0 0); pointer-events: none; }
 /* The bottom padding keeps the panel clear of the fixed music player in the lower-left corner. */
 .work-section { --player-clearance: calc(124px + env(safe-area-inset-bottom, 0px)); position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; width: calc(100% - var(--page-gutter) * 2); max-width: 2200px; margin: auto; padding: 100px 0 var(--player-clearance); opacity: var(--nav-opacity); transform: translate3d(0, calc((1 - var(--work-progress)) * 90px), 0) scale(calc(.94 + var(--work-progress) * .06)); }
